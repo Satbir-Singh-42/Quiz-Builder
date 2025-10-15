@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 9% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 9% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 9% 15%;
+
+    --primary: 216 95% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 265 83% 58%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 20% 98%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 215 20.2% 65.1%;
+
+    --radius: 0.5rem;
+
+    /* Custom colors from design */
+    --success: 159 83% 40%;
+    --warning: 38 92% 50%;
+    --error: 0 84% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-gray-50 text-foreground;
+  }
+
+  .quiz-option {
+    @apply transition-all duration-200;
+  }
+  
+  .quiz-option:hover {
+    @apply -translate-y-0.5;
+  }
+  
+  .timer-animation {
+    @apply transition-all duration-1000 ease-linear;
+  }
+}
