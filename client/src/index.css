@@ -22,7 +22,7 @@
     --muted: 210 20% 98%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 38 92% 50%;
+    --accent: 216 95% 58%; /* Blue like primary */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -51,11 +51,11 @@
   .quiz-option {
     @apply transition-all duration-200;
   }
-  
+
   .quiz-option:hover {
     @apply -translate-y-0.5;
   }
-  
+
   .timer-animation {
     @apply transition-all duration-1000 ease-linear;
   }
