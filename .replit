@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "python-3.11"]
+modules = ["nodejs-20", "web"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -9,7 +9,7 @@ packages = ["cacert", "glibcLocales", "inetutils", "libiconv"]
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["gunicorn", "--bind=0.0.0.0:5000", "--workers=4", "--timeout=120", "--reuse-port", "app:app"]
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 5000
@@ -36,19 +36,16 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Flask App"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "Flask App"
+name = "Start application"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python app.py"
+args = "npm run dev"
 waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [agent]
 expertMode = true
