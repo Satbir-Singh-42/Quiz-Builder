@@ -33,14 +33,18 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Auto-generate a session secret if not provided (persists for the lifetime of the process)
+  const sessionSecret =
+    process.env.SESSION_SECRET || randomBytes(32).toString("hex");
+
   if (!process.env.SESSION_SECRET) {
     console.warn(
-      "WARNING: SESSION_SECRET not set. Using fallback. Set SESSION_SECRET in production.",
+      "WARNING: SESSION_SECRET not set. Using auto-generated secret. Sessions will reset on restart.",
     );
   }
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || AUTH.SESSION_SECRET_FALLBACK,
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,

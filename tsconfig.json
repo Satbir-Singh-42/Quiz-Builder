@@ -1,5 +1,11 @@
 {
-  "include": ["client/src/**/*", "db/**/*", "server/**/*", "shared/**/*"],
+  "include": [
+    "client/src/**/*",
+    "db/**/*",
+    "server/**/*",
+    "shared/**/*",
+    "api/**/*"
+  ],
   "exclude": ["node_modules", "dist", "vite.config.ts"],
   "compilerOptions": {
     "target": "ES2022",
