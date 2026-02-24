@@ -13,22 +13,35 @@ import AdminManageQuizzes from "@/pages/admin/manage-quizzes";
 import AdminUserResults from "@/pages/admin/user-results";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
+import { ROUTES } from "@shared/constants";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/take-quiz/:id" component={TakeQuizPage} />
-      <Route path="/results/:id" component={QuizResultsPage} />
-      
+      <Route path={ROUTES.HOME} component={HomePage} />
+      <Route path={ROUTES.AUTH} component={AuthPage} />
+      <Route path={ROUTES.TAKE_QUIZ} component={TakeQuizPage} />
+      <Route path={ROUTES.RESULTS} component={QuizResultsPage} />
+
       {/* Admin routes */}
-      <ProtectedRoute path="/admin" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/dashboard" component={AdminDashboard} />
-      <ProtectedRoute path="/admin/create-quiz" component={AdminCreateQuiz} />
-      <ProtectedRoute path="/admin/manage-quizzes" component={AdminManageQuizzes} />
-      <ProtectedRoute path="/admin/user-results" component={AdminUserResults} />
-      
+      <ProtectedRoute path={ROUTES.ADMIN} component={AdminDashboard} />
+      <ProtectedRoute
+        path={ROUTES.ADMIN_DASHBOARD}
+        component={AdminDashboard}
+      />
+      <ProtectedRoute
+        path={ROUTES.ADMIN_CREATE_QUIZ}
+        component={AdminCreateQuiz}
+      />
+      <ProtectedRoute
+        path={ROUTES.ADMIN_MANAGE_QUIZZES}
+        component={AdminManageQuizzes}
+      />
+      <ProtectedRoute
+        path={ROUTES.ADMIN_USER_RESULTS}
+        component={AdminUserResults}
+      />
+
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

@@ -165,7 +165,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<schema.Quiz | undefined> {
     const [updatedQuiz] = await db
       .update(schema.quizzes)
-      .set(quiz)
+      .set({ ...quiz, updatedAt: new Date() })
       .where(eq(schema.quizzes.id, id))
       .returning();
     return updatedQuiz;

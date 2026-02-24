@@ -24,9 +24,21 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DEPARTMENTS,
+  YEAR_OPTIONS,
+  KNOWN_DEPARTMENT_VALUES,
+  STORAGE_KEYS,
+  VALIDATION,
+} from "@shared/constants";
 
 const formSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters"),
+  fullName: z
+    .string()
+    .min(
+      VALIDATION.MIN_NAME_LENGTH,
+      `Name must be at least ${VALIDATION.MIN_NAME_LENGTH} characters`,
+    ),
   rollNumber: z.string().min(1, "Roll number is required"),
   class: z.string().min(1, "Year is required"),
   department: z.string().min(1, "Department is required"),
@@ -46,7 +58,7 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       fullName: "",
-      rollNumber: localStorage.getItem("participantRollNumber") || "",
+      rollNumber: localStorage.getItem(STORAGE_KEYS.PARTICIPANT_ROLL) || "",
       class: "",
       department: "",
       customDepartment: "",
@@ -55,7 +67,7 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
 
   // We need to handle a React linter issue with the checkRollNumber dependency
   const initialRollNumberCheck = () => {
-    const savedRollNumber = localStorage.getItem("participantRollNumber");
+    const savedRollNumber = localStorage.getItem(STORAGE_KEYS.PARTICIPANT_ROLL);
     if (savedRollNumber) {
       // Use a slight delay to ensure component is fully mounted
       setTimeout(() => {
@@ -83,10 +95,10 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
         description: "Your information has been saved successfully.",
       });
       // Save participant ID in localStorage for persistence
-      localStorage.setItem("participantId", data.id.toString());
+      localStorage.setItem(STORAGE_KEYS.PARTICIPANT_ID, data.id.toString());
 
       // Also save roll number in localStorage for additional identification
-      localStorage.setItem("participantRollNumber", data.rollNumber);
+      localStorage.setItem(STORAGE_KEYS.PARTICIPANT_ROLL, data.rollNumber);
 
       onSubmit(data);
     },
@@ -118,16 +130,7 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
         form.setValue("department", participant.department);
 
         // If department is custom, show custom department field
-        if (
-          ![
-            "Civil-Engineering",
-            "CSE",
-            "EE",
-            "ECE",
-            "IT",
-            "mechanical-engineering",
-          ].includes(participant.department)
-        ) {
+        if (!KNOWN_DEPARTMENT_VALUES.includes(participant.department)) {
           form.setValue("department", "other");
           form.setValue("customDepartment", participant.department);
           setShowCustomDepartment(true);
@@ -219,10 +222,11 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="1st-year">1st Year</SelectItem>
-                    <SelectItem value="2nd-year">2nd Year</SelectItem>
-                    <SelectItem value="3rd-year">3rd Year</SelectItem>
-                    <SelectItem value="4th-year">4th Year</SelectItem>
+                    {YEAR_OPTIONS.map((year) => (
+                      <SelectItem key={year.value} value={year.value}>
+                        {year.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -248,23 +252,11 @@ export default function UserInfoForm({ onSubmit }: UserInfoFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="Civil-Engineering">
-                      Civil Engineering
-                    </SelectItem>
-                    <SelectItem value="CSE">
-                      Computer Science and Engineering
-                    </SelectItem>
-                    <SelectItem value="EE">Electrical Engineering</SelectItem>
-                    <SelectItem value="ECE">
-                      Electronics and Communication Engineering
-                    </SelectItem>
-                    <SelectItem value="IT">Information Technology</SelectItem>
-                    <SelectItem value="mechanical-engineering">
-                      Mechanical Engineering
-                    </SelectItem>
-                    <SelectItem value="other">
-                      Other (write your own)
-                    </SelectItem>
+                    {DEPARTMENTS.map((dept) => (
+                      <SelectItem key={dept.value} value={dept.value}>
+                        {dept.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />

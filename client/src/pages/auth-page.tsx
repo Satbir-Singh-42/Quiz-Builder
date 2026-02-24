@@ -16,6 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import {
+  AUTH,
+  APP_NAME,
+  APP_TAGLINE,
+  AUTH_FEATURES,
+  ROUTES,
+} from "@shared/constants";
 
 // Login schema
 const loginSchema = z.object({
@@ -26,8 +33,18 @@ const loginSchema = z.object({
 // Register schema
 const registerSchema = z
   .object({
-    username: z.string().min(3, "Username must be at least 3 characters"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    username: z
+      .string()
+      .min(
+        AUTH.MIN_USERNAME_LENGTH,
+        `Username must be at least ${AUTH.MIN_USERNAME_LENGTH} characters`,
+      ),
+    password: z
+      .string()
+      .min(
+        AUTH.MIN_PASSWORD_LENGTH,
+        `Password must be at least ${AUTH.MIN_PASSWORD_LENGTH} characters`,
+      ),
     confirmPassword: z.string().min(1, "Confirm your password"),
     adminSecret: z.string().min(1, "Admin secret is required"),
   })
@@ -43,7 +60,7 @@ export default function AuthPage() {
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      navigate("/admin");
+      navigate(ROUTES.ADMIN);
     }
   }, [user, navigate]);
 
@@ -92,9 +109,7 @@ export default function AuthPage() {
       <div className="w-full md:max-w-md bg-white p-6 sm:p-8 flex flex-col justify-center">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-primary">Admin Login</h1>
-          <p className="text-gray-600 mt-1">
-            Access the Quiz Builder dashboard
-          </p>
+          <p className="text-gray-600 mt-1">Access the {APP_NAME} dashboard</p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
@@ -252,7 +267,7 @@ export default function AuthPage() {
           <Button
             variant="link"
             className="text-sm text-primary"
-            onClick={() => navigate("/")}>
+            onClick={() => navigate(ROUTES.HOME)}>
             Back to User View
           </Button>
         </div>
@@ -262,7 +277,7 @@ export default function AuthPage() {
       <div className="hidden md:flex flex-col justify-center items-center bg-primary text-white w-full p-8">
         <div className="max-w-md text-center">
           <h2 className="text-3xl font-bold mb-4">
-            Welcome to Quiz Builder Admin
+            Welcome to {APP_NAME} Admin
           </h2>
           <p className="text-lg mb-6">
             Create and manage quizzes, track student performance, and analyze
@@ -270,34 +285,12 @@ export default function AuthPage() {
           </p>
 
           <div className="grid grid-cols-2 gap-6 mt-8">
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-2xl font-bold mb-2">Create</div>
-              <p className="text-sm">
-                Build quizzes with unlimited questions and customizable time
-                limits
-              </p>
-            </div>
-
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-2xl font-bold mb-2">Manage</div>
-              <p className="text-sm">
-                Edit, update, or delete quizzes with an intuitive interface
-              </p>
-            </div>
-
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-2xl font-bold mb-2">Track</div>
-              <p className="text-sm">
-                Monitor student performance and view detailed analytics
-              </p>
-            </div>
-
-            <div className="bg-white/10 p-4 rounded-lg">
-              <div className="text-2xl font-bold mb-2">Report</div>
-              <p className="text-sm">
-                Generate comprehensive reports on quiz results
-              </p>
-            </div>
+            {AUTH_FEATURES.map((feature) => (
+              <div key={feature.title} className="bg-white/10 p-4 rounded-lg">
+                <div className="text-2xl font-bold mb-2">{feature.title}</div>
+                <p className="text-sm">{feature.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -10,6 +10,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+import { QUIZ_DEFAULTS, VALIDATION, AUTH } from "./constants";
 
 // Users/admins table
 export const users = pgTable("users", {
@@ -20,51 +21,100 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  isAdmin: true,
-});
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    username: true,
+    password: true,
+    isAdmin: true,
+  })
+  .extend({
+    username: z
+      .string()
+      .min(
+        AUTH.MIN_USERNAME_LENGTH,
+        `Username must be at least ${AUTH.MIN_USERNAME_LENGTH} characters`,
+      ),
+    password: z
+      .string()
+      .min(
+        AUTH.MIN_PASSWORD_LENGTH,
+        `Password must be at least ${AUTH.MIN_PASSWORD_LENGTH} characters`,
+      ),
+  });
 
 // Quiz participants table
 export const participants = pgTable("participants", {
   id: serial("id").primaryKey(),
   fullName: text("full_name").notNull(),
-  rollNumber: text("roll_number").notNull(),
+  rollNumber: text("roll_number").notNull().unique(),
   class: text("class").notNull(),
   department: text("department").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertParticipantSchema = createInsertSchema(participants).pick({
-  fullName: true,
-  rollNumber: true,
-  class: true,
-  department: true,
-});
+export const insertParticipantSchema = createInsertSchema(participants)
+  .pick({
+    fullName: true,
+    rollNumber: true,
+    class: true,
+    department: true,
+  })
+  .extend({
+    fullName: z
+      .string()
+      .min(
+        VALIDATION.MIN_NAME_LENGTH,
+        `Name must be at least ${VALIDATION.MIN_NAME_LENGTH} characters`,
+      ),
+    rollNumber: z.string().min(1, "Roll number is required"),
+    class: z.string().min(1, "Year is required"),
+    department: z.string().min(1, "Department is required"),
+  });
 
 // Quizzes table
 export const quizzes = pgTable("quizzes", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  timeLimit: integer("time_limit").notNull(),
-  passingScore: integer("passing_score").default(60).notNull(),
+  description: text("description"),
+  timeLimit: integer("time_limit").notNull(), // in minutes
+  passingScore: integer("passing_score")
+    .default(QUIZ_DEFAULTS.DEFAULT_PASSING_SCORE)
+    .notNull(),
   creatorId: integer("creator_id")
     .references(() => users.id)
     .notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   password: text("password"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const insertQuizSchema = createInsertSchema(quizzes).pick({
-  title: true,
-  timeLimit: true,
-  passingScore: true,
-  creatorId: true,
-  isActive: true,
-  password: true,
-});
+export const insertQuizSchema = createInsertSchema(quizzes)
+  .pick({
+    title: true,
+    description: true,
+    timeLimit: true,
+    passingScore: true,
+    creatorId: true,
+    isActive: true,
+    password: true,
+  })
+  .extend({
+    title: z
+      .string()
+      .min(
+        VALIDATION.MIN_QUIZ_TITLE_LENGTH,
+        `Title must be at least ${VALIDATION.MIN_QUIZ_TITLE_LENGTH} characters`,
+      ),
+    description: z.string().nullish(),
+    timeLimit: z.coerce.number().int().positive("Time limit must be positive"),
+    passingScore: z.coerce
+      .number()
+      .int()
+      .min(1, "Min 1%")
+      .max(100, "Max 100%")
+      .default(QUIZ_DEFAULTS.DEFAULT_PASSING_SCORE),
+  });
 
 // Questions table
 export const questions = pgTable("questions", {
@@ -86,7 +136,19 @@ export const insertQuestionSchema = createInsertSchema(questions)
     correctAnswer: true,
   })
   .extend({
-    options: z.array(z.string()),
+    text: z
+      .string()
+      .min(
+        VALIDATION.MIN_QUESTION_LENGTH,
+        `Question must be at least ${VALIDATION.MIN_QUESTION_LENGTH} characters`,
+      ),
+    options: z
+      .array(z.string().min(1, "Option cannot be empty"))
+      .min(
+        QUIZ_DEFAULTS.MIN_OPTIONS,
+        `At least ${QUIZ_DEFAULTS.MIN_OPTIONS} options required`,
+      ),
+    correctAnswer: z.number().int().min(0),
   });
 
 // Quiz results table
@@ -105,6 +167,7 @@ export const results = pgTable("results", {
     .$type<{ questionId: number; selectedAnswer: number }[]>()
     .notNull(),
   canRetake: boolean("can_retake").default(false).notNull(),
+  ipAddress: text("ip_address"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });
 
@@ -119,6 +182,9 @@ export const insertResultSchema = createInsertSchema(results)
     canRetake: true,
   })
   .extend({
+    score: z.number().int().min(0),
+    totalQuestions: z.number().int().positive(),
+    timeTaken: z.number().int().min(0),
     answers: z.array(
       z.object({
         questionId: z.number(),

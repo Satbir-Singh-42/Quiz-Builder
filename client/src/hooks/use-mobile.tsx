@@ -1,6 +1,7 @@
 import * as React from "react";
+import { BREAKPOINTS } from "@shared/constants";
 
-const MOBILE_BREAKPOINT = 768;
+const MOBILE_BREAKPOINT = BREAKPOINTS.MOBILE;
 
 interface MobileHookResult {
   isMobile: boolean;

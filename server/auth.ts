@@ -7,8 +7,9 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { AUTH } from "@shared/constants";
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "change-me-in-production";
+const ADMIN_SECRET = process.env.ADMIN_SECRET || AUTH.ADMIN_SECRET_FALLBACK;
 
 declare global {
   namespace Express {
@@ -39,13 +40,13 @@ export function setupAuth(app: Express) {
   }
 
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "quiz-builder-dev-fallback-secret",
+    secret: process.env.SESSION_SECRET || AUTH.SESSION_SECRET_FALLBACK,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: AUTH.SESSION_MAX_AGE_MS,
     },
   };
 
@@ -150,7 +151,7 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) return res.status(200).json(null);
     res.json(req.user);
   });
 }

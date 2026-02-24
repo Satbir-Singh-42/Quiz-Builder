@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -6,7 +6,6 @@ import { Quiz, Question, InsertResult } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -18,7 +17,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Maximize, AlertTriangle, Clock } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  Play,
+  FileQuestion,
+  Timer,
+  HelpCircle,
+} from "lucide-react";
+import { TIMER, ROUTES } from "@shared/constants";
 
 interface QuizInterfaceProps {
   quiz: Quiz & { questions?: Question[] };
@@ -40,49 +47,57 @@ export default function QuizInterface({
   const [timeExpired, setTimeExpired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [fullScreenWarningShown, setFullScreenWarningShown] = useState(false);
+  const [fullScreenExitCount, setFullScreenExitCount] = useState(0);
   const [lowTimeWarningShown, setLowTimeWarningShown] = useState(false);
   const [showExitFullScreenWarning, setShowExitFullScreenWarning] =
     useState(false);
   const [showLowTimeWarning, setShowLowTimeWarning] = useState(false);
+  const [quizStarted, setQuizStarted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const quizContainerRef = useRef<HTMLDivElement>(null);
 
-  const questions = quiz.questions || [];
+  // Shuffle questions once per mount (Fisher-Yates) so each participant gets a different order
+  const questions = useMemo(() => {
+    const arr = [...(quiz.questions || [])];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, [quiz.questions]);
   const totalQuestions = questions.length;
 
-  // Enter fullscreen on mount
-  useEffect(() => {
-    const enterFullScreen = async () => {
-      try {
-        if (
-          quizContainerRef.current &&
-          document.documentElement.requestFullscreen
-        ) {
-          await document.documentElement.requestFullscreen();
-          setIsFullScreen(true);
-        }
-      } catch {
-        // Fullscreen not supported or denied
+  // Start quiz with fullscreen (called from user click — satisfies browser gesture requirement)
+  const handleStartQuiz = async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+        setIsFullScreen(true);
       }
-    };
+    } catch {
+      // Fullscreen denied or not supported — continue anyway
+    }
+    setQuizStarted(true);
+  };
 
-    enterFullScreen();
+  // Listen for fullscreen changes (only after quiz started)
+  useEffect(() => {
+    if (!quizStarted) return;
 
-    // Handle fullscreen change events
     const handleFullScreenChange = () => {
       const isCurrentlyFullScreen = !!document.fullscreenElement;
       setIsFullScreen(isCurrentlyFullScreen);
 
-      if (isCurrentlyFullScreen) {
-        // Reset warning flag when user re-enters fullscreen (via any method)
-        setFullScreenWarningShown(false);
-      } else {
-        // Show warning if user exits fullscreen
-        if (!submitting && !fullScreenWarningShown) {
+      if (!isCurrentlyFullScreen && !submitting) {
+        setFullScreenExitCount((prev) => {
+          const newCount = prev + 1;
+          if (newCount >= TIMER.MAX_FULLSCREEN_EXITS) {
+            // Max exits reached — auto-submit
+            return newCount;
+          }
           setShowExitFullScreenWarning(true);
-          setFullScreenWarningShown(true);
-        }
+          return newCount;
+        });
       }
     };
 
@@ -94,14 +109,16 @@ export default function QuizInterface({
         document.exitFullscreen().catch(() => {});
       }
     };
-  }, [submitting, fullScreenWarningShown]);
+  }, [quizStarted, submitting]);
 
-  // Timer with low time warning
+  // Timer with low time warning (only starts after quiz begins)
   useEffect(() => {
+    if (!quizStarted) return;
+
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
-        // Show warning at 5 minutes (300 seconds)
-        if (prev === 300 && !lowTimeWarningShown) {
+        // Show warning at low time threshold
+        if (prev === TIMER.LOW_TIME_WARNING_SECONDS && !lowTimeWarningShown) {
           setShowLowTimeWarning(true);
           setLowTimeWarningShown(true);
         }
@@ -121,7 +138,7 @@ export default function QuizInterface({
         clearInterval(timerRef.current);
       }
     };
-  }, [lowTimeWarningShown]);
+  }, [quizStarted, lowTimeWarningShown]);
 
   // Prevent page navigation/reload
   useEffect(() => {
@@ -143,18 +160,6 @@ export default function QuizInterface({
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
-
-  const getTimerProgressPercentage = (): number => {
-    const totalSeconds = quiz.timeLimit * 60;
-    return (timeLeft / totalSeconds) * 100;
-  };
-
-  const getTimerColor = (): string => {
-    const percentage = getTimerProgressPercentage();
-    if (percentage <= 10) return "bg-red-500";
-    if (percentage <= 25) return "bg-yellow-500";
-    return "bg-primary";
   };
 
   const handleAnswerSelect = (questionId: number, answerIndex: number) => {
@@ -261,11 +266,24 @@ export default function QuizInterface({
       // Wait a brief moment to show the dialog, then auto-submit
       const autoSubmitTimer = setTimeout(() => {
         handleSubmit();
-      }, 2000); // 2 second delay to show the warning
+      }, TIMER.AUTO_SUBMIT_DELAY_MS);
 
       return () => clearTimeout(autoSubmitTimer);
     }
   }, [timeExpired, submitting, handleSubmit]);
+
+  // Auto-submit when max fullscreen exits reached
+  useEffect(() => {
+    if (fullScreenExitCount >= TIMER.MAX_FULLSCREEN_EXITS && !submitting) {
+      toast({
+        title: "Quiz Auto-Submitted",
+        description:
+          "You exited full screen too many times. Your quiz has been submitted.",
+        variant: "destructive",
+      });
+      handleSubmit();
+    }
+  }, [fullScreenExitCount, submitting, handleSubmit, toast]);
 
   const handleTimeUp = () => {
     setIsTimeUpDialogOpen(false);
@@ -295,11 +313,76 @@ export default function QuizInterface({
             This quiz doesn't have any questions yet.
           </p>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate(ROUTES.HOME)}
             className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-600 transition-colors"
             data-testid="button-go-back">
             Go Back
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Intro / Start screen — fullscreen is triggered by user click (satisfies browser gesture requirement)
+  if (!quizStarted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 px-4">
+        <div className="bg-white rounded-lg shadow-xl p-6 sm:p-10 max-w-lg w-full text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mx-auto">
+            <FileQuestion className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              {quiz.title}
+            </h1>
+            {quiz.description && (
+              <p className="mt-2 text-gray-500 text-sm sm:text-base">
+                {quiz.description}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+            <div className="flex flex-col items-center gap-1 bg-gray-50 rounded-lg p-3">
+              <HelpCircle className="h-5 w-5 text-primary" />
+              <span className="font-semibold text-gray-900">
+                {totalQuestions}
+              </span>
+              <span>Questions</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 bg-gray-50 rounded-lg p-3">
+              <Timer className="h-5 w-5 text-primary" />
+              <span className="font-semibold text-gray-900">
+                {quiz.timeLimit} min
+              </span>
+              <span>Time Limit</span>
+            </div>
+          </div>
+
+          <div className="text-left bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 space-y-1">
+            <p className="font-semibold">Before you begin:</p>
+            <ul className="list-disc list-inside space-y-0.5">
+              <li>The quiz will open in full-screen mode.</li>
+              <li>Full screen is mandatory during the entire quiz.</li>
+              <li>
+                Exiting full screen {TIMER.MAX_FULLSCREEN_EXITS} times will
+                auto-submit your quiz.
+              </li>
+              <li>The timer starts once you click Start.</li>
+              <li>You cannot pause or restart the quiz.</li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Button
+              className="flex-1 gap-2"
+              size="lg"
+              onClick={handleStartQuiz}
+              data-testid="button-start-fullscreen">
+              <Play className="h-5 w-5" />
+              Start Quiz
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -319,17 +402,6 @@ export default function QuizInterface({
                 <h1 className="text-lg sm:text-xl font-bold text-primary line-clamp-1">
                   {quiz.title}
                 </h1>
-                {!isFullScreen && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReenterFullScreen}
-                    className="flex-shrink-0"
-                    data-testid="button-fullscreen">
-                    <Maximize className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Full Screen</span>
-                  </Button>
-                )}
               </div>
 
               <div className="flex items-center justify-between sm:justify-end gap-3">
@@ -337,7 +409,7 @@ export default function QuizInterface({
                   <Clock className="h-4 w-4 text-gray-500" />
                   <span className="text-sm text-gray-600">Time:</span>
                   <span
-                    className={`font-semibold text-sm sm:text-base ${timeLeft <= 300 ? "text-red-500 animate-pulse" : ""}`}>
+                    className={`font-semibold text-sm sm:text-base ${timeLeft <= TIMER.LOW_TIME_WARNING_SECONDS ? "text-red-500 animate-pulse" : ""}`}>
                     {formatTime(timeLeft)}
                   </span>
                 </div>
@@ -348,12 +420,14 @@ export default function QuizInterface({
               </div>
             </div>
 
-            {/* Timer Progress Bar */}
+            {/* Question Completion Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
               <div
-                className={`${getTimerColor()} h-2 rounded-full transition-all duration-1000`}
-                style={{ width: `${getTimerProgressPercentage()}%` }}
-                data-testid="timer-progress"></div>
+                className={`h-2 rounded-full transition-all duration-300 ${Object.keys(answers).length === totalQuestions ? "bg-green-500" : "bg-primary"}`}
+                style={{
+                  width: `${totalQuestions > 0 ? (Object.keys(answers).length / totalQuestions) * 100 : 0}%`,
+                }}
+                data-testid="completion-progress"></div>
             </div>
           </div>
         </div>
@@ -413,7 +487,18 @@ export default function QuizInterface({
                           (option, index) => (
                             <div
                               key={index}
-                              className="quiz-option group border-2 border-gray-200 rounded-lg py-4 px-4 sm:px-6 hover:bg-slate-50 hover:border-primary transition-all cursor-pointer"
+                              className={`quiz-option group border-2 rounded-lg py-4 px-4 sm:px-6 transition-all cursor-pointer ${
+                                answers[questions[currentQuestionIndex].id] ===
+                                index
+                                  ? "border-primary bg-primary/5"
+                                  : "border-gray-200 hover:bg-slate-50 hover:border-primary"
+                              }`}
+                              onClick={() =>
+                                handleAnswerSelect(
+                                  questions[currentQuestionIndex].id,
+                                  index,
+                                )
+                              }
                               data-testid={`option-${index}`}>
                               <div className="flex items-start sm:items-center space-x-3">
                                 <RadioGroupItem
@@ -424,13 +509,11 @@ export default function QuizInterface({
                                       questions[currentQuestionIndex].id
                                     ] === index
                                   }
-                                  className="mt-1 sm:mt-0"
+                                  className="mt-1 sm:mt-0 pointer-events-none"
                                 />
-                                <Label
-                                  htmlFor={`single-q${questions[currentQuestionIndex].id}-option-${index}`}
-                                  className="flex-grow cursor-pointer font-normal text-base sm:text-lg">
+                                <span className="flex-grow font-normal text-base sm:text-lg">
                                   {option}
-                                </Label>
+                                </span>
                               </div>
                             </div>
                           ),
@@ -494,19 +577,24 @@ export default function QuizInterface({
                         {question.options.map((option, optionIndex) => (
                           <div
                             key={optionIndex}
-                            className="quiz-option group border-2 border-gray-200 rounded-lg py-3 px-4 sm:px-6 hover:bg-slate-50 hover:border-primary transition-all cursor-pointer">
+                            className={`quiz-option group border-2 rounded-lg py-3 px-4 sm:px-6 transition-all cursor-pointer ${
+                              answers[question.id] === optionIndex
+                                ? "border-primary bg-primary/5"
+                                : "border-gray-200 hover:bg-slate-50 hover:border-primary"
+                            }`}
+                            onClick={() =>
+                              handleAnswerSelect(question.id, optionIndex)
+                            }>
                             <div className="flex items-start sm:items-center space-x-3">
                               <RadioGroupItem
                                 value={optionIndex.toString()}
                                 id={`q${question.id}-option-${optionIndex}`}
                                 checked={answers[question.id] === optionIndex}
-                                className="mt-1 sm:mt-0"
+                                className="mt-1 sm:mt-0 pointer-events-none"
                               />
-                              <Label
-                                htmlFor={`q${question.id}-option-${optionIndex}`}
-                                className="flex-grow cursor-pointer font-normal text-base">
+                              <span className="flex-grow font-normal text-base">
                                 {option}
-                              </Label>
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -598,24 +686,22 @@ export default function QuizInterface({
         onOpenChange={setShowExitFullScreenWarning}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <div className="flex items-center gap-2 text-yellow-500">
+            <div className="flex items-center gap-2 text-red-500">
               <AlertTriangle className="h-6 w-6" />
               <AlertDialogTitle>Warning: Full Screen Exited</AlertDialogTitle>
             </div>
             <AlertDialogDescription>
-              You have exited full screen mode. It is recommended to stay in
-              full screen mode during the quiz.
-              <span className="block mt-2 font-medium">
-                Would you like to return to full screen?
+              You must stay in full screen mode during the quiz.
+              <span className="block mt-2 font-semibold text-red-600">
+                Warning {fullScreenExitCount} of {TIMER.MAX_FULLSCREEN_EXITS}.
+              </span>
+              <span className="block mt-1">
+                Your quiz will be auto-submitted after{" "}
+                {TIMER.MAX_FULLSCREEN_EXITS} exits.
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => setShowExitFullScreenWarning(false)}
-              data-testid="button-stay-windowed">
-              Continue Windowed
-            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReenterFullScreen}
               data-testid="button-reenter-fullscreen">

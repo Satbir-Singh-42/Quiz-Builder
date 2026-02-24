@@ -23,10 +23,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Trash } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { VALIDATION, QUIZ_DEFAULTS, ROUTES } from "@shared/constants";
 
 // Define the form schema
 const formSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
+  title: z
+    .string()
+    .min(
+      VALIDATION.MIN_QUIZ_TITLE_LENGTH,
+      `Title must be at least ${VALIDATION.MIN_QUIZ_TITLE_LENGTH} characters`,
+    ),
   timeLimit: z.coerce.number().int().positive("Time limit must be positive"),
   passingScore: z.coerce.number().int().min(1, "Min 1%").max(100, "Max 100%"),
   isActive: z.boolean().default(true),
@@ -34,14 +40,22 @@ const formSchema = z.object({
   questions: z
     .array(
       z.object({
-        text: z.string().min(3, "Question must be at least 3 characters"),
+        text: z
+          .string()
+          .min(
+            VALIDATION.MIN_QUESTION_LENGTH,
+            `Question must be at least ${VALIDATION.MIN_QUESTION_LENGTH} characters`,
+          ),
         options: z
           .array(z.string().min(1, "Option cannot be empty"))
           .min(2, "At least 2 options required"),
         correctAnswer: z.number(),
       }),
     )
-    .min(1, "At least one question is required"),
+    .min(
+      QUIZ_DEFAULTS.MIN_QUESTIONS,
+      `At least ${QUIZ_DEFAULTS.MIN_QUESTIONS} question is required`,
+    ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -119,8 +133,8 @@ export default function AdminCreateQuiz() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      timeLimit: 30,
-      passingScore: 60,
+      timeLimit: QUIZ_DEFAULTS.DEFAULT_TIME_LIMIT,
+      passingScore: QUIZ_DEFAULTS.DEFAULT_PASSING_SCORE,
       isActive: true,
       questions: [
         {
@@ -201,7 +215,7 @@ export default function AdminCreateQuiz() {
           ? "Quiz updated successfully"
           : "Quiz created successfully",
       });
-      navigate("/admin/manage-quizzes");
+      navigate(ROUTES.ADMIN_MANAGE_QUIZZES);
     },
     onError: () => {
       toast({
@@ -221,8 +235,8 @@ export default function AdminCreateQuiz() {
 
   return (
     <SidebarLayout>
-      <header className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">
+      <header className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
           {isLoading ? (
             <span className="flex items-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -234,7 +248,7 @@ export default function AdminCreateQuiz() {
             "Create New Quiz"
           )}
         </h1>
-        <p className="text-gray-600">
+        <p className="text-sm sm:text-base text-gray-600">
           {editQuizId
             ? "Update questions and quiz parameters"
             : "Add questions and set quiz parameters"}
@@ -242,7 +256,7 @@ export default function AdminCreateQuiz() {
       </header>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-4 sm:p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Quiz Details */}
@@ -511,11 +525,11 @@ export default function AdminCreateQuiz() {
               </div>
 
               {/* Submit */}
-              <div className="flex justify-end mt-8 space-x-3">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end mt-6 sm:mt-8 gap-3 sm:space-x-3">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate("/admin/manage-quizzes")}>
+                  onClick={() => navigate(ROUTES.ADMIN_MANAGE_QUIZZES)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={quizMutation.isPending}>

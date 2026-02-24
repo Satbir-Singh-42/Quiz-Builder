@@ -3,6 +3,7 @@ import { db } from "./index";
 import * as schema from "@shared/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+import { QUIZ_DEFAULTS } from "@shared/constants";
 
 const scryptAsync = promisify(scrypt);
 
@@ -18,15 +19,16 @@ async function seed() {
 
     // Create admin user
     const adminExists = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.username, "admin")
+      where: (users, { eq }) => eq(users.username, "admin"),
     });
 
     if (!adminExists) {
-      const adminUser = await db.insert(schema.users)
+      const adminUser = await db
+        .insert(schema.users)
         .values({
           username: "admin",
           password: await hashPassword("admin123"),
-          isAdmin: true
+          isAdmin: true,
         })
         .returning();
       console.log("Admin user created:", adminUser[0].username);
@@ -36,13 +38,13 @@ async function seed() {
 
     // Seed sample quizzes if none exist
     const existingQuizzes = await db.query.quizzes.findMany({
-      limit: 1
+      limit: 1,
     });
 
     if (existingQuizzes.length === 0) {
       // Get admin user id
       const admin = await db.query.users.findFirst({
-        where: (users, { eq }) => eq(users.username, "admin")
+        where: (users, { eq }) => eq(users.username, "admin"),
       });
 
       if (!admin) {
@@ -50,12 +52,15 @@ async function seed() {
       }
 
       // Create JavaScript quiz
-      const jsQuiz = await db.insert(schema.quizzes)
+      const jsQuiz = await db
+        .insert(schema.quizzes)
         .values({
           title: "Introduction to JavaScript",
-          timeLimit: 30,
+          description:
+            "Test your knowledge of JavaScript fundamentals including variables, data types, and syntax.",
+          timeLimit: QUIZ_DEFAULTS.DEFAULT_TIME_LIMIT,
           passingScore: 70,
-          creatorId: admin.id
+          creatorId: admin.id,
         })
         .returning();
       console.log("Created quiz:", jsQuiz[0].title);
@@ -68,19 +73,14 @@ async function seed() {
             "var myVariable = 10;",
             "variable myVariable = 10;",
             "v myVariable = 10;",
-            "const myVariable := 10;"
+            "const myVariable := 10;",
           ],
-          correctAnswer: 0
+          correctAnswer: 0,
         },
         {
           text: "Which of the following is NOT a JavaScript data type?",
-          options: [
-            "String",
-            "Boolean",
-            "Character",
-            "Undefined"
-          ],
-          correctAnswer: 2
+          options: ["String", "Boolean", "Character", "Undefined"],
+          correctAnswer: 2,
         },
         {
           text: "How do you write a comment in JavaScript?",
@@ -88,33 +88,35 @@ async function seed() {
             "// This is a comment",
             "<!-- This is a comment -->",
             "/* This is a comment */",
-            "Both A and C are correct"
+            "Both A and C are correct",
           ],
-          correctAnswer: 3
-        }
+          correctAnswer: 3,
+        },
       ];
-      
+
       for (const q of jsQuestions) {
-        await db.insert(schema.questions)
-          .values({
-            quizId: jsQuiz[0].id,
-            text: q.text,
-            options: q.options,
-            correctAnswer: q.correctAnswer
-          });
+        await db.insert(schema.questions).values({
+          quizId: jsQuiz[0].id,
+          text: q.text,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        });
       }
-      
+
       // Create Database quiz
-      const dbQuiz = await db.insert(schema.quizzes)
+      const dbQuiz = await db
+        .insert(schema.quizzes)
         .values({
           title: "Database Management Systems",
+          description:
+            "Evaluate your understanding of SQL, database concepts, and query fundamentals.",
           timeLimit: 25,
-          passingScore: 60,
-          creatorId: admin.id
+          passingScore: QUIZ_DEFAULTS.DEFAULT_PASSING_SCORE,
+          creatorId: admin.id,
         })
         .returning();
       console.log("Created quiz:", dbQuiz[0].title);
-      
+
       // Add questions
       const dbQuestions = [
         {
@@ -123,77 +125,63 @@ async function seed() {
             "Structured Query Language",
             "Simple Query Language",
             "Standard Query Language",
-            "System Query Language"
+            "System Query Language",
           ],
-          correctAnswer: 0
+          correctAnswer: 0,
         },
         {
           text: "Which of the following is not a valid SQL command?",
-          options: [
-            "SELECT",
-            "CONNECT",
-            "UPDATE",
-            "DELETE"
-          ],
-          correctAnswer: 1
-        }
+          options: ["SELECT", "CONNECT", "UPDATE", "DELETE"],
+          correctAnswer: 1,
+        },
       ];
-      
+
       for (const q of dbQuestions) {
-        await db.insert(schema.questions)
-          .values({
-            quizId: dbQuiz[0].id,
-            text: q.text,
-            options: q.options,
-            correctAnswer: q.correctAnswer
-          });
+        await db.insert(schema.questions).values({
+          quizId: dbQuiz[0].id,
+          text: q.text,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        });
       }
-      
+
       // Create Data Structures quiz
-      const dsQuiz = await db.insert(schema.quizzes)
+      const dsQuiz = await db
+        .insert(schema.quizzes)
         .values({
           title: "Data Structures",
+          description:
+            "Assess your knowledge of common data structures and their time complexities.",
           timeLimit: 45,
           passingScore: 65,
-          creatorId: admin.id
+          creatorId: admin.id,
         })
         .returning();
       console.log("Created quiz:", dsQuiz[0].title);
-      
+
       // Add questions
       const dsQuestions = [
         {
           text: "Which data structure uses LIFO order?",
-          options: [
-            "Queue",
-            "Stack",
-            "Linked List",
-            "Tree"
-          ],
-          correctAnswer: 1
+          options: ["Queue", "Stack", "Linked List", "Tree"],
+          correctAnswer: 1,
         },
         {
           text: "What is the time complexity of binary search?",
-          options: [
-            "O(1)",
-            "O(n)",
-            "O(log n)",
-            "O(n²)"
-          ],
-          correctAnswer: 2
-        }
+          options: ["O(1)", "O(n)", "O(log n)", "O(n²)"],
+          correctAnswer: 2,
+        },
       ];
-      
+
       for (const q of dsQuestions) {
-        await db.insert(schema.questions)
-          .values({
-            quizId: dsQuiz[0].id,
-            text: q.text,
-            options: q.options,
-            correctAnswer: q.correctAnswer
-          });
+        await db.insert(schema.questions).values({
+          quizId: dsQuiz[0].id,
+          text: q.text,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        });
       }
-      
+
       console.log("Sample quizzes and questions created successfully");
     } else {
       console.log("Quizzes already exist, skipping sample data creation");

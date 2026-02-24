@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiRequest } from "@/lib/queryClient";
 import { CheckCircle, Eye, RefreshCw } from "lucide-react";
+import { STORAGE_KEYS } from "@shared/constants";
 
 interface QuizListProps {
   quizzes: Quiz[];
@@ -24,7 +25,7 @@ export default function QuizList({ quizzes, participantId }: QuizListProps) {
       try {
         const response = await apiRequest(
           "GET",
-          `/api/participants/${participantId}/results`,
+          `/api/participants/${participantId}/results?self=${participantId}`,
         );
         if (response.ok) {
           const results = await response.json();
@@ -55,7 +56,7 @@ export default function QuizList({ quizzes, participantId }: QuizListProps) {
 
   const handleTakeQuiz = (quizId: number) => {
     // Store participantId in localStorage for later use
-    localStorage.setItem("participantId", participantId.toString());
+    localStorage.setItem(STORAGE_KEYS.PARTICIPANT_ID, participantId.toString());
     navigate(`/take-quiz/${quizId}`);
   };
 

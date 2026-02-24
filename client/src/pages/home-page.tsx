@@ -7,17 +7,35 @@ import { Button } from "@/components/ui/button";
 import { Loader2, LogOut } from "lucide-react";
 import { Participant, Quiz } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  APP_NAME,
+  APP_DESCRIPTION,
+  STORAGE_KEYS,
+  TIMER,
+  ROUTES,
+} from "@shared/constants";
 
 export default function HomePage() {
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [isLoadingParticipant, setIsLoadingParticipant] = useState(true);
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+
+  // Admin should not be on student pages — redirect to admin dashboard
+  useEffect(() => {
+    if (user?.isAdmin) {
+      navigate(ROUTES.ADMIN);
+    }
+  }, [user, navigate]);
 
   // Check for participant data in localStorage - optimized for faster loading
   useEffect(() => {
     const loadParticipant = async () => {
       try {
-        const storedParticipantId = localStorage.getItem("participantId");
+        const storedParticipantId = localStorage.getItem(
+          STORAGE_KEYS.PARTICIPANT_ID,
+        );
 
         // Only attempt to load participant data if we have an ID stored
         if (storedParticipantId) {
@@ -31,11 +49,11 @@ export default function HomePage() {
             setParticipant(participantData);
           } else {
             // If ID lookup fails, clear the stored ID
-            localStorage.removeItem("participantId");
+            localStorage.removeItem(STORAGE_KEYS.PARTICIPANT_ID);
 
             // Quick fallback to roll number if available
             const storedRollNumber = localStorage.getItem(
-              "participantRollNumber",
+              STORAGE_KEYS.PARTICIPANT_ROLL,
             );
             if (storedRollNumber) {
               const rollResponse = await apiRequest(
@@ -45,19 +63,19 @@ export default function HomePage() {
               if (rollResponse.ok) {
                 const participantData = await rollResponse.json();
                 localStorage.setItem(
-                  "participantId",
+                  STORAGE_KEYS.PARTICIPANT_ID,
                   participantData.id.toString(),
                 );
                 setParticipant(participantData);
               } else {
-                localStorage.removeItem("participantRollNumber");
+                localStorage.removeItem(STORAGE_KEYS.PARTICIPANT_ROLL);
               }
             }
           }
         }
       } catch {
-        localStorage.removeItem("participantId");
-        localStorage.removeItem("participantRollNumber");
+        localStorage.removeItem(STORAGE_KEYS.PARTICIPANT_ID);
+        localStorage.removeItem(STORAGE_KEYS.PARTICIPANT_ROLL);
       } finally {
         // Always set loading to false when done
         setIsLoadingParticipant(false);
@@ -70,7 +88,7 @@ export default function HomePage() {
     // Set a timeout to ensure we don't keep the loading state indefinitely
     const timeoutId = setTimeout(() => {
       setIsLoadingParticipant(false);
-    }, 2000); // 2 second timeout as a fallback
+    }, TIMER.PARTICIPANT_LOAD_TIMEOUT_MS); // timeout as a fallback
 
     return () => clearTimeout(timeoutId);
   }, []);
@@ -82,24 +100,22 @@ export default function HomePage() {
   });
 
   const handleAdminLogin = () => {
-    navigate("/auth");
+    navigate(ROUTES.AUTH);
   };
 
   const handleLogout = () => {
     // Clear participant data from state and localStorage
     setParticipant(null);
-    localStorage.removeItem("participantId");
-    localStorage.removeItem("participantRollNumber");
+    localStorage.removeItem(STORAGE_KEYS.PARTICIPANT_ID);
+    localStorage.removeItem(STORAGE_KEYS.PARTICIPANT_ROLL);
   };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <header className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Quiz Builder</h1>
-          <p className="text-gray-600">
-            Complete quizzes and track your progress
-          </p>
+          <h1 className="text-3xl font-bold text-primary">{APP_NAME}</h1>
+          <p className="text-gray-600">{APP_DESCRIPTION}</p>
         </div>
 
         <Button

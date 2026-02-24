@@ -41,6 +41,7 @@ import {
   Search,
 } from "lucide-react";
 import { QuizWithQuestions } from "@shared/schema";
+import { ROUTES, DASHBOARD } from "@shared/constants";
 
 export default function AdminManageQuizzes() {
   const [, navigate] = useLocation();
@@ -84,11 +85,10 @@ export default function AdminManageQuizzes() {
 
   // Format date
   const formatDate = (date: Date | string) => {
-    return new Date(date).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    return new Date(date).toLocaleDateString(
+      DASHBOARD.DATE_LOCALE,
+      DASHBOARD.DATE_FORMAT,
+    );
   };
 
   // Filter quizzes
@@ -105,12 +105,16 @@ export default function AdminManageQuizzes() {
 
   return (
     <SidebarLayout>
-      <header className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <header className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Manage Quizzes</h1>
-          <p className="text-gray-600">View, edit, and delete your quizzes</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+            Manage Quizzes
+          </h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            View, edit, and delete your quizzes
+          </p>
         </div>
-        <Button onClick={() => navigate("/admin/create-quiz")}>
+        <Button onClick={() => navigate(ROUTES.ADMIN_CREATE_QUIZ)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Quiz
         </Button>
@@ -125,10 +129,10 @@ export default function AdminManageQuizzes() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-6">
-          <div className="mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="relative w-full max-w-md">
+        <CardContent className="p-4 sm:p-6">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="relative w-full sm:max-w-md">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                 <Input
                   id="search"
@@ -156,101 +160,179 @@ export default function AdminManageQuizzes() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : filteredQuizzes && filteredQuizzes.length > 0 ? (
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>Quiz Title</TableHead>
-                    <TableHead>Questions</TableHead>
-                    <TableHead>Time Information</TableHead>
-                    <TableHead>Passing Score</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredQuizzes.map((quiz) => (
-                    <TableRow key={quiz.id} className="hover:bg-slate-50">
-                      <TableCell className="font-medium">
-                        {quiz.title}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-blue-50">
-                          {quiz.questions?.length || 0} questions
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="h-4 w-4 text-slate-400" />
-                          <span>{quiz.timeLimit} minutes</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            quiz.passingScore >= 80 ? "success" : "outline"
-                          }
-                          className={
-                            quiz.passingScore >= 80
-                              ? "bg-green-100 text-green-800 hover:bg-green-100"
-                              : "bg-orange-100 text-orange-800 hover:bg-orange-100"
-                          }>
-                          {quiz.passingScore}%
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={quiz.isActive ? "default" : "outline"}
-                          className={
-                            quiz.isActive
-                              ? "bg-green-100 text-green-800 hover:bg-green-100"
-                              : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                          }>
-                          {quiz.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatDate(quiz.createdAt)}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary"
-                            onClick={() =>
-                              navigate(`/admin/create-quiz?edit=${quiz.id}`)
-                            }
-                            title="Edit Quiz">
-                            <PenSquare className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-500"
-                            onClick={() =>
-                              window.open(`/take-quiz/${quiz.id}`, "_blank")
-                            }
-                            title="Preview Quiz">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500"
-                            onClick={() => {
-                              setQuizToDelete(quiz.id);
-                              setDeleteDialogOpen(true);
-                            }}
-                            title="Delete Quiz">
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50">
+                      <TableHead>Quiz Title</TableHead>
+                      <TableHead>Questions</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Pass %</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredQuizzes.map((quiz) => (
+                      <TableRow key={quiz.id} className="hover:bg-slate-50">
+                        <TableCell className="font-medium">
+                          {quiz.title}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-50">
+                            {quiz.questions?.length || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-4 w-4 text-slate-400" />
+                            <span>{quiz.timeLimit} min</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              quiz.passingScore >= 80 ? "success" : "outline"
+                            }
+                            className={
+                              quiz.passingScore >= 80
+                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                : "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                            }>
+                            {quiz.passingScore}%
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={quiz.isActive ? "default" : "outline"}
+                            className={
+                              quiz.isActive
+                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                            }>
+                            {quiz.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatDate(quiz.createdAt)}</TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-primary h-8 w-8 p-0"
+                              onClick={() =>
+                                navigate(
+                                  `${ROUTES.ADMIN_CREATE_QUIZ}?edit=${quiz.id}`,
+                                )
+                              }
+                              title="Edit Quiz">
+                              <PenSquare className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-500 h-8 w-8 p-0"
+                              onClick={() =>
+                                window.open(`/take-quiz/${quiz.id}`, "_blank")
+                              }
+                              title="Preview Quiz">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 h-8 w-8 p-0"
+                              onClick={() => {
+                                setQuizToDelete(quiz.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                              title="Delete Quiz">
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3">
+                {filteredQuizzes.map((quiz) => (
+                  <div
+                    key={quiz.id}
+                    className="border rounded-lg p-4 bg-white hover:bg-slate-50 transition-colors">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {quiz.title}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-50 text-xs">
+                            {quiz.questions?.length || 0} Q
+                          </Badge>
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {quiz.timeLimit} min
+                          </span>
+                          <Badge
+                            variant={quiz.isActive ? "default" : "outline"}
+                            className={`text-xs ${
+                              quiz.isActive
+                                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                                : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                            }`}>
+                            {quiz.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Pass: {quiz.passingScore}% ·{" "}
+                          {formatDate(quiz.createdAt)}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-primary h-8 w-8 p-0"
+                          onClick={() =>
+                            navigate(
+                              `${ROUTES.ADMIN_CREATE_QUIZ}?edit=${quiz.id}`,
+                            )
+                          }>
+                          <PenSquare className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-500 h-8 w-8 p-0"
+                          onClick={() =>
+                            window.open(`/take-quiz/${quiz.id}`, "_blank")
+                          }>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 h-8 w-8 p-0"
+                          onClick={() => {
+                            setQuizToDelete(quiz.id);
+                            setDeleteDialogOpen(true);
+                          }}>
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           ) : (
             <div className="text-center py-12 border rounded-md">
               <div className="flex justify-center mb-4">
@@ -265,7 +347,7 @@ export default function AdminManageQuizzes() {
                 Try adjusting your search or create a new quiz
               </p>
               <Button
-                onClick={() => navigate("/admin/create-quiz")}
+                onClick={() => navigate(ROUTES.ADMIN_CREATE_QUIZ)}
                 className="mt-4">
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Quiz

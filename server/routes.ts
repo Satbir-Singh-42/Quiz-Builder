@@ -321,7 +321,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateResultRetake(previousAttempt.id, false);
       }
 
-      const result = await storage.createResult(validatedData);
+      // Capture client IP address
+      const ipAddress =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.ip ||
+        "unknown";
+
+      const result = await storage.createResult({
+        ...validatedData,
+        ipAddress,
+      } as any);
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof z.ZodError)
@@ -368,6 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Result detail — admin can see any result, students can only see their own
   app.get("/api/results/:id", async (req, res) => {
     try {
       const resultId = parseId(req.params.id);
@@ -376,17 +386,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const result = await storage.getResultWithDetails(resultId);
       if (!result) return res.status(404).json({ message: "Result not found" });
+
+      // Non-admin requests must own the result (match participantId from query)
+      const isAdminUser = req.isAuthenticated() && req.user?.isAdmin;
+      if (!isAdminUser) {
+        const requestParticipantId = parseId(req.query.participantId as string);
+        if (
+          isNaN(requestParticipantId) ||
+          result.participantId !== requestParticipantId
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Forbidden: you can only view your own results" });
+        }
+      }
+
+      // For students, strip correct answers — only show marks, not solutions
+      if (!isAdminUser && result.questions) {
+        result.questions = result.questions.map((q) => ({
+          ...q,
+          correctAnswer: -1, // hide actual correct answer
+        }));
+      }
+
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch result" });
     }
   });
 
+  // Participant results — admin can see any, students can only see their own
   app.get("/api/participants/:participantId/results", async (req, res) => {
     try {
       const participantId = parseId(req.params.participantId);
       if (isNaN(participantId))
         return res.status(400).json({ message: "Invalid participant ID" });
+
+      // Non-admin requests must pass a matching participantId
+      if (!req.isAuthenticated() || !req.user?.isAdmin) {
+        const storedId = parseId(req.query.self as string);
+        if (isNaN(storedId) || storedId !== participantId) {
+          return res
+            .status(403)
+            .json({ message: "Forbidden: you can only view your own results" });
+        }
+      }
 
       const results = await storage.getResultsByParticipantId(participantId);
       res.json(results);
