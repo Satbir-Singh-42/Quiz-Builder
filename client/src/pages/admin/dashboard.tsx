@@ -2,7 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import SidebarLayout from "@/components/ui/sidebar-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,38 +17,44 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  Loader2, 
-  PenSquare, 
-  Users, 
+import {
+  Loader2,
+  PenSquare,
+  Users,
   FilePlus,
   Award,
-  Clock
+  Clock,
 } from "lucide-react";
+
+import { QuizWithQuestions, ResultWithDetails } from "@shared/schema";
 
 export default function AdminDashboard() {
   const [, navigate] = useLocation();
-  
-  const { data: quizzes, isLoading: isLoadingQuizzes } = useQuery({
+
+  const { data: quizzes, isLoading: isLoadingQuizzes } = useQuery<
+    QuizWithQuestions[]
+  >({
     queryKey: ["/api/quizzes"],
   });
-  
-  const { data: results, isLoading: isLoadingResults } = useQuery({
+
+  const { data: results, isLoading: isLoadingResults } = useQuery<
+    ResultWithDetails[]
+  >({
     queryKey: ["/api/results"],
   });
-  
+
   const calculateAverageScore = () => {
     if (!results || results.length === 0) return 0;
-    
+
     const totalScore = results.reduce((acc, result) => {
       return acc + (result.score / result.totalQuestions) * 100;
     }, 0);
-    
+
     return Math.round(totalScore / results.length);
   };
-  
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -55,7 +67,7 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
         <p className="text-gray-600">Overview of quizzes and results</p>
       </header>
-      
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card className="bg-white shadow-sm">
@@ -77,7 +89,7 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white shadow-sm">
           <CardContent className="p-6">
             <div className="flex justify-between items-center">
@@ -97,7 +109,7 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white shadow-sm">
           <CardContent className="p-6">
             <div className="flex justify-between items-center">
@@ -117,7 +129,7 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-white shadow-sm">
           <CardContent className="p-6">
             <div className="flex justify-between items-center">
@@ -129,7 +141,8 @@ export default function AdminDashboard() {
                   ) : (
                     (() => {
                       const avgTime = Math.round(
-                        results.reduce((acc, r) => acc + r.timeTaken, 0) / results.length
+                        results.reduce((acc, r) => acc + r.timeTaken, 0) /
+                          results.length,
                       );
                       return `${Math.floor(avgTime / 60)}m ${avgTime % 60}s`;
                     })()
@@ -143,7 +156,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Recent Quizzes */}
       <Card className="mb-8 bg-white shadow-sm">
         <CardHeader>
@@ -152,11 +165,10 @@ export default function AdminDashboard() {
               <CardTitle>Recent Quizzes</CardTitle>
               <CardDescription>Latest created quiz assessments</CardDescription>
             </div>
-            <Button 
+            <Button
               onClick={() => navigate("/admin/manage-quizzes")}
               variant="outline"
-              className="text-sm"
-            >
+              className="text-sm">
               View All
             </Button>
           </div>
@@ -181,17 +193,20 @@ export default function AdminDashboard() {
                 <TableBody>
                   {quizzes.slice(0, 5).map((quiz) => (
                     <TableRow key={quiz.id} className="hover:bg-slate-50">
-                      <TableCell className="font-medium">{quiz.title}</TableCell>
+                      <TableCell className="font-medium">
+                        {quiz.title}
+                      </TableCell>
                       <TableCell>{quiz.questions?.length || 0}</TableCell>
                       <TableCell>{quiz.timeLimit} minutes</TableCell>
                       <TableCell>{formatDate(quiz.createdAt)}</TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-primary"
-                          onClick={() => navigate(`/admin/create-quiz?edit=${quiz.id}`)}
-                        >
+                          onClick={() =>
+                            navigate(`/admin/create-quiz?edit=${quiz.id}`)
+                          }>
                           <PenSquare className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
@@ -204,30 +219,30 @@ export default function AdminDashboard() {
           ) : (
             <div className="text-center py-8 text-gray-500">
               <p>No quizzes available yet.</p>
-              <Button 
+              <Button
                 onClick={() => navigate("/admin/create-quiz")}
-                className="mt-4"
-              >
+                className="mt-4">
                 Create Your First Quiz
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
-      
+
       {/* Recent Results */}
       <Card className="bg-white shadow-sm">
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Recent Results</CardTitle>
-              <CardDescription>Latest quiz submissions from participants</CardDescription>
+              <CardDescription>
+                Latest quiz submissions from participants
+              </CardDescription>
             </div>
-            <Button 
+            <Button
               onClick={() => navigate("/admin/user-results")}
               variant="outline"
-              className="text-sm"
-            >
+              className="text-sm">
               View All
             </Button>
           </div>
@@ -252,9 +267,11 @@ export default function AdminDashboard() {
                 </TableHeader>
                 <TableBody>
                   {results.slice(0, 5).map((result) => {
-                    const scorePercentage = Math.round((result.score / result.totalQuestions) * 100);
+                    const scorePercentage = Math.round(
+                      (result.score / result.totalQuestions) * 100,
+                    );
                     let scoreColor = "text-gray-700";
-                    
+
                     if (scorePercentage >= 80) {
                       scoreColor = "text-green-600";
                     } else if (scorePercentage >= 60) {
@@ -262,43 +279,49 @@ export default function AdminDashboard() {
                     } else {
                       scoreColor = "text-red-600";
                     }
-                    
+
                     return (
                       <TableRow key={result.id} className="hover:bg-slate-50">
                         <TableCell>
                           <div>
-                            <div className="font-medium">{result.participant.fullName}</div>
+                            <div className="font-medium">
+                              {result.participant.fullName}
+                            </div>
                             <div className="text-xs text-gray-500">
-                              {result.participant.rollNumber} • {result.participant.department}
+                              {result.participant.rollNumber} •{" "}
+                              {result.participant.department}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>{result.quiz.title}</TableCell>
                         <TableCell className={scoreColor}>
                           <div className="flex items-center gap-2">
-                            <div 
+                            <div
                               className={`w-2 h-2 rounded-full ${
-                                scorePercentage >= 80 ? 'bg-green-500' : 
-                                scorePercentage >= 60 ? 'bg-blue-500' : 
-                                'bg-red-500'
-                              }`} 
+                                scorePercentage >= 80
+                                  ? "bg-green-500"
+                                  : scorePercentage >= 60
+                                    ? "bg-blue-500"
+                                    : "bg-red-500"
+                              }`}
                             />
                             <span>
-                              {scorePercentage}% ({result.score}/{result.totalQuestions})
+                              {scorePercentage}% ({result.score}/
+                              {result.totalQuestions})
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          {Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s
+                          {Math.floor(result.timeTaken / 60)}m{" "}
+                          {result.timeTaken % 60}s
                         </TableCell>
                         <TableCell>{formatDate(result.submittedAt)}</TableCell>
                         <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-primary"
-                            onClick={() => navigate(`/results/${result.id}`)}
-                          >
+                            onClick={() => navigate(`/results/${result.id}`)}>
                             View Details
                           </Button>
                         </TableCell>

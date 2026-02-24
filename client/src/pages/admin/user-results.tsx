@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
+import { ResultWithDetails, QuizWithQuestions } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -42,7 +43,7 @@ export default function AdminUserResults() {
   const { toast } = useToast();
   
   // Fetch all results
-  const { data: results, isLoading: isLoadingResults } = useQuery({
+  const { data: results, isLoading: isLoadingResults } = useQuery<ResultWithDetails[]>({
     queryKey: ["/api/results", sortBy, quizFilter],
     queryFn: async ({ queryKey }) => {
       const [_, sort, quiz] = queryKey;
@@ -57,13 +58,13 @@ export default function AdminUserResults() {
   });
   
   // Fetch all quizzes for filter dropdown
-  const { data: quizzes, isLoading: isLoadingQuizzes } = useQuery({
+  const { data: quizzes, isLoading: isLoadingQuizzes } = useQuery<QuizWithQuestions[]>({
     queryKey: ["/api/quizzes"],
   });
   
   // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (date: Date | string) => {
+    return new Date(date).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",

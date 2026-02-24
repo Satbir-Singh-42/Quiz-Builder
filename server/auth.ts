@@ -8,6 +8,8 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "change-me-in-production";
+
 declare global {
   namespace Express {
     interface User extends SelectUser {}
@@ -30,15 +32,21 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  if (!process.env.SESSION_SECRET) {
+    console.warn(
+      "WARNING: SESSION_SECRET not set. Using fallback. Set SESSION_SECRET in production.",
+    );
+  }
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "quiz-builder-secret",
+    secret: process.env.SESSION_SECRET || "quiz-builder-dev-fallback-secret",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
   };
 
   app.set("trust proxy", 1);
@@ -71,56 +79,70 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists. Please choose another username." });
-      }
+  app.post(
+    "/api/register",
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { username, password, adminSecret } = req.body;
 
-      // Check if user is trying to set admin flag
-      if (req.body.isAdmin === true) {
-        return res.status(400).json({ 
-          message: "Regular registration does not allow setting admin privileges. Please use standard registration."
+        if (!username || !password) {
+          return res
+            .status(400)
+            .json({ message: "Username and password are required." });
+        }
+
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser) {
+          return res
+            .status(400)
+            .json({
+              message:
+                "Username already exists. Please choose another username.",
+            });
+        }
+
+        // Validate admin secret — only users who provide the correct secret can register
+        if (!adminSecret || adminSecret !== ADMIN_SECRET) {
+          return res.status(403).json({
+            message:
+              "Invalid admin secret. Please contact an administrator to get the registration code.",
+          });
+        }
+
+        const user = await storage.createUser({
+          username,
+          password: await hashPassword(password),
+          isAdmin: true,
         });
-      }
-      
-      // Check if password starts with "admin" (secret code, but don't expose this)
-      if (!req.body.password.startsWith("admin")) {
-        return res.status(400).json({ 
-          message: "Unauthorized registration attempt. Please contact an administrator."
+
+        req.login(user, (err) => {
+          if (err) return next(err);
+          res.status(201).json(user);
         });
+      } catch (error) {
+        console.error("Registration error:", error);
+        if (error instanceof Error) {
+          return res.status(400).json({ message: error.message });
+        }
+        next(error);
       }
-
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-        isAdmin: true  // Force all registered users to be admins in this application
-      });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      if (error instanceof Error) {
-        return res.status(400).json({ message: error.message });
-      }
-      next(error);
-    }
-  });
+    },
+  );
 
   app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
-    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
-      if (err) return next(err);
-      if (!user) return res.status(401).json({ message: "Invalid credentials" });
-      
-      req.login(user, (err) => {
+    passport.authenticate(
+      "local",
+      (err: any, user: Express.User | false, info: any) => {
         if (err) return next(err);
-        res.status(200).json(user);
-      });
-    })(req, res, next);
+        if (!user)
+          return res.status(401).json({ message: "Invalid credentials" });
+
+        req.login(user, (err) => {
+          if (err) return next(err);
+          res.status(200).json(user);
+        });
+      },
+    )(req, res, next);
   });
 
   app.post("/api/logout", (req: Request, res: Response, next: NextFunction) => {

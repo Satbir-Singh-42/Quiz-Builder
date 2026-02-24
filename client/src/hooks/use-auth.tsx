@@ -4,9 +4,13 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
+import { User as SelectUser, InsertUser } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+type RegisterData = Pick<InsertUser, "username" | "password"> & {
+  adminSecret: string;
+};
 
 type AuthContextType = {
   user: SelectUser | null;
@@ -14,7 +18,7 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  registerMutation: UseMutationResult<SelectUser, Error, RegisterData>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -53,19 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
+    mutationFn: async (credentials: RegisterData) => {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
       if (!res.ok) {
         const errorData = await res.json();
-        if (errorData.message) {
-          throw new Error(errorData.message);
-        } else if (errorData.errors && Array.isArray(errorData.errors)) {
-          // Format validation errors nicely
-          const errorMessage = errorData.errors.map((err: any) => err.message).join('. ');
-          throw new Error(errorMessage);
-        } else {
-          throw new Error('Registration failed. Please try again.');
-        }
+        throw new Error(
+          errorData.message || "Registration failed. Please try again.",
+        );
       }
       return await res.json();
     },
@@ -114,8 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
-      }}
-    >
+      }}>
       {children}
     </AuthContext.Provider>
   );
