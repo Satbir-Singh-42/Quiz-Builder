@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Sidebar from "@/components/layout/sidebar";
+import SidebarLayout from "@/components/ui/sidebar-layout";
 import {
   Form,
   FormControl,
@@ -48,7 +47,6 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function AdminCreateQuiz() {
-  const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
 
@@ -89,14 +87,19 @@ export default function AdminCreateQuiz() {
             timeLimit: quizData.timeLimit,
             passingScore: quizData.passingScore,
             isActive: quizData.isActive,
-            questions: questionsData.map((q: any) => ({
-              text: q.text,
-              options: q.options,
-              correctAnswer: q.correctAnswer,
-            })),
+            questions: questionsData.map(
+              (q: {
+                text: string;
+                options: string[];
+                correctAnswer: number;
+              }) => ({
+                text: q.text,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+              }),
+            ),
           });
-        } catch (error) {
-          console.error("Error fetching quiz data:", error);
+        } catch {
           toast({
             title: "Error",
             description: "Failed to load quiz data",
@@ -200,7 +203,7 @@ export default function AdminCreateQuiz() {
       });
       navigate("/admin/manage-quizzes");
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: editQuizId
@@ -208,7 +211,6 @@ export default function AdminCreateQuiz() {
           : "Failed to create quiz. Please try again.",
         variant: "destructive",
       });
-      console.error(error);
     },
   });
 
@@ -218,48 +220,151 @@ export default function AdminCreateQuiz() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex">
-        <Sidebar />
+    <SidebarLayout>
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-800">
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading Quiz...
+            </span>
+          ) : editQuizId ? (
+            "Edit Quiz"
+          ) : (
+            "Create New Quiz"
+          )}
+        </h1>
+        <p className="text-gray-600">
+          {editQuizId
+            ? "Update questions and quiz parameters"
+            : "Add questions and set quiz parameters"}
+        </p>
+      </header>
 
-        <main className="ml-64 flex-1 p-8">
-          <header className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-800">
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Loading Quiz...
-                </span>
-              ) : editQuizId ? (
-                "Edit Quiz"
-              ) : (
-                "Create New Quiz"
-              )}
-            </h1>
-            <p className="text-gray-600">
-              {editQuizId
-                ? "Update questions and quiz parameters"
-                : "Add questions and set quiz parameters"}
-            </p>
-          </header>
+      <Card>
+        <CardContent className="p-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Quiz Details */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quiz Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. Introduction to JavaScript"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <Card>
-            <CardContent className="p-6">
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6">
-                  {/* Quiz Details */}
-                  <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="timeLimit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time Limit (minutes)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Maximum time allowed for the quiz
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="passingScore"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Passing Score (%)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} max={100} {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Minimum percentage to pass the quiz
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Quiz Visibility
+                        </FormLabel>
+                        <FormDescription>
+                          When active, this quiz will be visible to students on
+                          the quiz list.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Questions */}
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Questions</h2>
+                  <FormMessage>
+                    {form.formState.errors.questions?.message}
+                  </FormMessage>
+                </div>
+
+                {questionFields.map((field, questionIndex) => (
+                  <div
+                    key={field.id}
+                    className="border border-gray-200 rounded-lg p-4 space-y-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-medium">
+                        Question {questionIndex + 1}
+                      </h3>
+                      {questionFields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeQuestion(questionIndex)}>
+                          <Trash className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+
                     <FormField
                       control={form.control}
-                      name="title"
+                      name={`questions.${questionIndex}.text`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quiz Title</FormLabel>
+                          <FormLabel>Question Text</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="e.g. Introduction to JavaScript"
+                            <Textarea
+                              placeholder="Enter your question here"
+                              className="resize-none"
+                              rows={2}
                               {...field}
                             />
                           </FormControl>
@@ -268,292 +373,168 @@ export default function AdminCreateQuiz() {
                       )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="timeLimit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Time Limit (minutes)</FormLabel>
-                            <FormControl>
-                              <Input type="number" min={1} {...field} />
-                            </FormControl>
-                            <FormDescription>
-                              Maximum time allowed for the quiz
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div className="space-y-4">
+                      <FormLabel>Answer Options</FormLabel>
 
                       <FormField
                         control={form.control}
-                        name="passingScore"
+                        name={`questions.${questionIndex}.correctAnswer`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Passing Score (%)</FormLabel>
                             <FormControl>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={100}
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Minimum percentage to pass the quiz
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="isActive"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
-                              Quiz Visibility
-                            </FormLabel>
-                            <FormDescription>
-                              When active, this quiz will be visible to students
-                              on the quiz list.
-                            </FormDescription>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Questions */}
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-lg font-semibold">Questions</h2>
-                      <FormMessage>
-                        {form.formState.errors.questions?.message}
-                      </FormMessage>
-                    </div>
-
-                    {questionFields.map((field, questionIndex) => (
-                      <div
-                        key={field.id}
-                        className="border border-gray-200 rounded-lg p-4 space-y-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="font-medium">
-                            Question {questionIndex + 1}
-                          </h3>
-                          {questionFields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => removeQuestion(questionIndex)}>
-                              <Trash className="h-4 w-4 mr-1" />
-                              Remove
-                            </Button>
-                          )}
-                        </div>
-
-                        <FormField
-                          control={form.control}
-                          name={`questions.${questionIndex}.text`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Question Text</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Enter your question here"
-                                  className="resize-none"
-                                  rows={2}
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="space-y-4">
-                          <FormLabel>Answer Options</FormLabel>
-
-                          <FormField
-                            control={form.control}
-                            name={`questions.${questionIndex}.correctAnswer`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormControl>
-                                  <RadioGroup
-                                    onValueChange={(value) =>
-                                      field.onChange(parseInt(value))
-                                    }
-                                    value={field.value.toString()}
-                                    className="space-y-3">
-                                    {form
-                                      .watch(
+                              <RadioGroup
+                                onValueChange={(value) =>
+                                  field.onChange(parseInt(value))
+                                }
+                                value={field.value.toString()}
+                                className="space-y-3">
+                                {form
+                                  .watch(`questions.${questionIndex}.options`)
+                                  ?.map((_, optionIndex) => (
+                                    <div
+                                      key={optionIndex}
+                                      className="flex items-center">
+                                      <RadioGroupItem
+                                        value={optionIndex.toString()}
+                                        id={`q${questionIndex}-option-${optionIndex}`}
+                                        className="mr-2"
+                                      />
+                                      <FormField
+                                        control={form.control}
+                                        name={`questions.${questionIndex}.options.${optionIndex}`}
+                                        render={({ field: optionField }) => (
+                                          <FormItem className="flex-grow">
+                                            <FormControl>
+                                              <Input
+                                                placeholder="Enter answer option"
+                                                {...optionField}
+                                              />
+                                            </FormControl>
+                                            <FormMessage />
+                                          </FormItem>
+                                        )}
+                                      />
+                                      {form.watch(
                                         `questions.${questionIndex}.options`,
-                                      )
-                                      ?.map((_, optionIndex) => (
-                                        <div
-                                          key={optionIndex}
-                                          className="flex items-center">
-                                          <RadioGroupItem
-                                            value={optionIndex.toString()}
-                                            id={`q${questionIndex}-option-${optionIndex}`}
-                                            className="mr-2"
-                                          />
-                                          <FormField
-                                            control={form.control}
-                                            name={`questions.${questionIndex}.options.${optionIndex}`}
-                                            render={({
-                                              field: optionField,
-                                            }) => (
-                                              <FormItem className="flex-grow">
-                                                <FormControl>
-                                                  <Input
-                                                    placeholder="Enter answer option"
-                                                    {...optionField}
-                                                  />
-                                                </FormControl>
-                                                <FormMessage />
-                                              </FormItem>
-                                            )}
-                                          />
-                                          {form.watch(
-                                            `questions.${questionIndex}.options`,
-                                          ).length > 2 && (
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="sm"
-                                              className="ml-2 text-red-500"
-                                              onClick={() => {
-                                                const currentOptions =
-                                                  form.getValues(
-                                                    `questions.${questionIndex}.options`,
-                                                  );
-                                                const currentCorrectAnswer =
-                                                  form.getValues(
-                                                    `questions.${questionIndex}.correctAnswer`,
-                                                  );
+                                      ).length > 2 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="ml-2 text-red-500"
+                                          onClick={() => {
+                                            const currentOptions =
+                                              form.getValues(
+                                                `questions.${questionIndex}.options`,
+                                              );
+                                            const currentCorrectAnswer =
+                                              form.getValues(
+                                                `questions.${questionIndex}.correctAnswer`,
+                                              );
 
-                                                // Remove the option
-                                                const newOptions = [
-                                                  ...currentOptions,
-                                                ];
-                                                newOptions.splice(
-                                                  optionIndex,
-                                                  1,
-                                                );
+                                            // Remove the option
+                                            const newOptions = [
+                                              ...currentOptions,
+                                            ];
+                                            newOptions.splice(optionIndex, 1);
 
-                                                // Update correct answer if needed
-                                                let newCorrectAnswer =
-                                                  currentCorrectAnswer;
-                                                if (
-                                                  optionIndex ===
-                                                  currentCorrectAnswer
-                                                ) {
-                                                  newCorrectAnswer = 0;
-                                                } else if (
-                                                  optionIndex <
-                                                  currentCorrectAnswer
-                                                ) {
-                                                  newCorrectAnswer--;
-                                                }
+                                            // Update correct answer if needed
+                                            let newCorrectAnswer =
+                                              currentCorrectAnswer;
+                                            if (
+                                              optionIndex ===
+                                              currentCorrectAnswer
+                                            ) {
+                                              newCorrectAnswer = 0;
+                                            } else if (
+                                              optionIndex < currentCorrectAnswer
+                                            ) {
+                                              newCorrectAnswer--;
+                                            }
 
-                                                form.setValue(
-                                                  `questions.${questionIndex}.options`,
-                                                  newOptions,
-                                                );
-                                                form.setValue(
-                                                  `questions.${questionIndex}.correctAnswer`,
-                                                  newCorrectAnswer,
-                                                );
-                                              }}>
-                                              <Trash className="h-4 w-4" />
-                                            </Button>
-                                          )}
-                                        </div>
-                                      ))}
-                                  </RadioGroup>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                                            form.setValue(
+                                              `questions.${questionIndex}.options`,
+                                              newOptions,
+                                            );
+                                            form.setValue(
+                                              `questions.${questionIndex}.correctAnswer`,
+                                              newCorrectAnswer,
+                                            );
+                                          }}>
+                                          <Trash className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ))}
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const currentOptions = form.getValues(
-                                `questions.${questionIndex}.options`,
-                              );
-                              form.setValue(
-                                `questions.${questionIndex}.options`,
-                                [...currentOptions, ""],
-                              );
-                            }}
-                            className="text-primary">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add Another Option
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        appendQuestion({
-                          text: "",
-                          options: ["", ""],
-                          correctAnswer: 0,
-                        });
-                      }}
-                      className="w-full border-dashed">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Another Question
-                    </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const currentOptions = form.getValues(
+                            `questions.${questionIndex}.options`,
+                          );
+                          form.setValue(`questions.${questionIndex}.options`, [
+                            ...currentOptions,
+                            "",
+                          ]);
+                        }}
+                        className="text-primary">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Another Option
+                      </Button>
+                    </div>
                   </div>
+                ))}
 
-                  {/* Submit */}
-                  <div className="flex justify-end mt-8 space-x-3">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => navigate("/admin/manage-quizzes")}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={quizMutation.isPending}>
-                      {quizMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          {editQuizId ? "Updating..." : "Creating..."}
-                        </>
-                      ) : editQuizId ? (
-                        "Update Quiz"
-                      ) : (
-                        "Create Quiz"
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    appendQuestion({
+                      text: "",
+                      options: ["", ""],
+                      correctAnswer: 0,
+                    });
+                  }}
+                  className="w-full border-dashed">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Another Question
+                </Button>
+              </div>
+
+              {/* Submit */}
+              <div className="flex justify-end mt-8 space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate("/admin/manage-quizzes")}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={quizMutation.isPending}>
+                  {quizMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {editQuizId ? "Updating..." : "Creating..."}
+                    </>
+                  ) : editQuizId ? (
+                    "Update Quiz"
+                  ) : (
+                    "Create Quiz"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </SidebarLayout>
   );
 }

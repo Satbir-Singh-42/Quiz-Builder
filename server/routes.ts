@@ -10,12 +10,18 @@ import {
   insertResultSchema,
 } from "@shared/schema";
 
-// Middleware to check if user is an admin
+// RBAC Middleware
 function isAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated() && req.user?.isAdmin) {
     return next();
   }
-  res.status(403).json({ message: "Forbidden" });
+  res.status(403).json({ message: "Forbidden: admin access required" });
+}
+
+/** Parse and validate an integer ID from a string. Returns NaN on failure. */
+function parseId(value: string | undefined): number {
+  const id = parseInt(value ?? "", 10);
+  return Number.isFinite(id) && id > 0 ? id : NaN;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -67,8 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // General route to get participants by ID
   app.get("/api/participants/:id", async (req, res) => {
     try {
-      const participantId = parseInt(req.params.id);
-
+      const participantId = parseId(req.params.id);
       if (isNaN(participantId)) {
         return res.status(400).json({ message: "Invalid participant ID" });
       }
@@ -85,11 +90,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Quiz routes
+  // Quiz routes — public reads for active quizzes, admin writes
   app.get("/api/quizzes", async (req, res) => {
     try {
-      const includeInactive = req.query.includeInactive === "true";
-      const quizzes = await storage.getAllQuizzes(includeInactive);
+      // Only admins can see inactive quizzes
+      const includeInactive =
+        req.query.includeInactive === "true" &&
+        req.isAuthenticated() &&
+        req.user?.isAdmin;
+      const quizzes = await storage.getAllQuizzes(!!includeInactive);
       res.json(quizzes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch quizzes" });
@@ -98,14 +107,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/quizzes/:id", async (req, res) => {
     try {
-      const quizId = parseInt(req.params.id);
-      const includeInactive = req.query.includeInactive === "true";
-      const quiz = await storage.getQuiz(quizId, includeInactive);
+      const quizId = parseId(req.params.id);
+      if (isNaN(quizId))
+        return res.status(400).json({ message: "Invalid quiz ID" });
 
-      if (!quiz) {
-        return res.status(404).json({ message: "Quiz not found" });
-      }
+      const includeInactive =
+        req.query.includeInactive === "true" &&
+        req.isAuthenticated() &&
+        req.user?.isAdmin;
+      const quiz = await storage.getQuiz(quizId, !!includeInactive);
 
+      if (!quiz) return res.status(404).json({ message: "Quiz not found" });
       res.json(quiz);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch quiz" });
@@ -114,64 +126,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quizzes", isAdmin, async (req, res) => {
     try {
-      // Use non-null assertion since isAdmin middleware guarantees req.user exists
       const validatedData = insertQuizSchema.parse({
         ...req.body,
         creatorId: req.user!.id,
       });
-
       const quiz = await storage.createQuiz(validatedData);
       res.status(201).json(quiz);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to create quiz" });
     }
   });
 
   app.put("/api/quizzes/:id", isAdmin, async (req, res) => {
     try {
-      const quizId = parseInt(req.params.id);
+      const quizId = parseId(req.params.id);
+      if (isNaN(quizId))
+        return res.status(400).json({ message: "Invalid quiz ID" });
+
       const quiz = await storage.getQuiz(quizId, true);
+      if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-      if (!quiz) {
-        return res.status(404).json({ message: "Quiz not found" });
-      }
-
-      // Validate only the fields being updated
-      const updateSchema = insertQuizSchema.partial();
-      const validatedData = updateSchema.parse(req.body);
-
+      const validatedData = insertQuizSchema.partial().parse(req.body);
       const updatedQuiz = await storage.updateQuiz(quizId, validatedData);
       res.json(updatedQuiz);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to update quiz" });
     }
   });
 
   app.delete("/api/quizzes/:id", isAdmin, async (req, res) => {
     try {
-      const quizId = parseInt(req.params.id);
+      const quizId = parseId(req.params.id);
+      if (isNaN(quizId))
+        return res.status(400).json({ message: "Invalid quiz ID" });
+
       const success = await storage.deleteQuiz(quizId);
-
-      if (!success) {
-        return res.status(404).json({ message: "Quiz not found" });
-      }
-
+      if (!success) return res.status(404).json({ message: "Quiz not found" });
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete quiz" });
     }
   });
 
-  // Question routes
+  // Question routes — admin only for writes
   app.get("/api/quizzes/:quizId/questions", async (req, res) => {
     try {
-      const quizId = parseInt(req.params.quizId);
+      const quizId = parseId(req.params.quizId);
+      if (isNaN(quizId))
+        return res.status(400).json({ message: "Invalid quiz ID" });
       const questions = await storage.getQuestionsByQuizId(quizId);
       res.json(questions);
     } catch (error) {
@@ -185,46 +191,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const question = await storage.createQuestion(validatedData);
       res.status(201).json(question);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to create question" });
     }
   });
 
   app.put("/api/questions/:id", isAdmin, async (req, res) => {
     try {
-      const questionId = parseInt(req.params.id);
-      const updateSchema = insertQuestionSchema.partial();
-      const validatedData = updateSchema.parse(req.body);
+      const questionId = parseId(req.params.id);
+      if (isNaN(questionId))
+        return res.status(400).json({ message: "Invalid question ID" });
 
+      const validatedData = insertQuestionSchema.partial().parse(req.body);
       const updatedQuestion = await storage.updateQuestion(
         questionId,
         validatedData,
       );
-
-      if (!updatedQuestion) {
+      if (!updatedQuestion)
         return res.status(404).json({ message: "Question not found" });
-      }
-
       res.json(updatedQuestion);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to update question" });
     }
   });
 
   app.delete("/api/questions/:id", isAdmin, async (req, res) => {
     try {
-      const questionId = parseInt(req.params.id);
+      const questionId = parseId(req.params.id);
+      if (isNaN(questionId))
+        return res.status(400).json({ message: "Invalid question ID" });
+
       const success = await storage.deleteQuestion(questionId);
-
-      if (!success) {
+      if (!success)
         return res.status(404).json({ message: "Question not found" });
-      }
-
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete question" });
@@ -234,28 +236,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk create questions for a quiz
   app.post("/api/quizzes/:quizId/questions/bulk", isAdmin, async (req, res) => {
     try {
-      const quizId = parseInt(req.params.quizId);
+      const quizId = parseId(req.params.quizId);
+      if (isNaN(quizId))
+        return res.status(400).json({ message: "Invalid quiz ID" });
+
       const quiz = await storage.getQuiz(quizId, true);
-      if (!quiz) {
-        return res.status(404).json({ message: "Quiz not found" });
-      }
+      if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
       const questionsSchema = z.array(
         insertQuestionSchema.omit({ quizId: true }),
       );
       const validatedQuestions = questionsSchema.parse(req.body);
 
-      const questionsWithQuizId = validatedQuestions.map((q) => ({
-        ...q,
-        quizId,
-      }));
-      const createdQuestions =
-        await storage.createQuestionsBulk(questionsWithQuizId);
+      const createdQuestions = await storage.createQuestionsBulk(
+        validatedQuestions.map((q) => ({ ...q, quizId })),
+      );
       res.status(201).json(createdQuestions);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to create questions" });
     }
   });
@@ -263,32 +262,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Replace all questions for a quiz (delete existing + create new)
   app.put("/api/quizzes/:quizId/questions", isAdmin, async (req, res) => {
     try {
-      const quizId = parseInt(req.params.quizId);
+      const quizId = parseId(req.params.quizId);
+      if (isNaN(quizId))
+        return res.status(400).json({ message: "Invalid quiz ID" });
+
       const quiz = await storage.getQuiz(quizId, true);
-      if (!quiz) {
-        return res.status(404).json({ message: "Quiz not found" });
-      }
+      if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
       const questionsSchema = z.array(
         insertQuestionSchema.omit({ quizId: true }),
       );
       const validatedQuestions = questionsSchema.parse(req.body);
 
-      // Delete all existing questions for this quiz
       await storage.deleteQuestionsByQuizId(quizId);
-
-      // Create new questions in bulk
-      const questionsWithQuizId = validatedQuestions.map((q) => ({
-        ...q,
-        quizId,
-      }));
-      const createdQuestions =
-        await storage.createQuestionsBulk(questionsWithQuizId);
+      const createdQuestions = await storage.createQuestionsBulk(
+        validatedQuestions.map((q) => ({ ...q, quizId })),
+      );
       res.json(createdQuestions);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to replace questions" });
     }
   });
@@ -297,12 +290,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/results", async (req, res) => {
     try {
       const validatedData = insertResultSchema.parse(req.body);
+
+      // Validate participant exists
+      const participant = await storage.getParticipant(
+        validatedData.participantId,
+      );
+      if (!participant)
+        return res.status(404).json({ message: "Participant not found" });
+
+      // Validate quiz exists and is active
+      const quiz = await storage.getQuiz(validatedData.quizId);
+      if (!quiz)
+        return res.status(404).json({ message: "Quiz not found or inactive" });
+
+      // Prevent duplicate submissions
+      const existingResults = await storage.getResultsByParticipantId(
+        validatedData.participantId,
+      );
+      const previousAttempt = existingResults.find(
+        (r) => r.quizId === validatedData.quizId,
+      );
+      if (previousAttempt && !previousAttempt.canRetake) {
+        return res
+          .status(409)
+          .json({ message: "Quiz already completed. Retake not allowed." });
+      }
+
+      // Reset canRetake flag on previous result when retaking
+      if (previousAttempt?.canRetake) {
+        await storage.updateResultRetake(previousAttempt.id, false);
+      }
+
       const result = await storage.createResult(validatedData);
       res.status(201).json(result);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z.ZodError)
         return res.status(400).json({ errors: error.errors });
-      }
       res.status(500).json({ message: "Failed to save result" });
     }
   });
@@ -313,7 +336,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const quizId = req.query.quizId
         ? parseInt(req.query.quizId as string)
         : undefined;
-
       const results = await storage.getAllResults(sortBy, quizId);
       res.json(results);
     } catch (error) {
@@ -321,11 +343,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check if a participant has already taken a quiz
+  // Check if a participant has already taken a quiz (public — participant needs this)
   app.get("/api/results/check", async (req, res) => {
     try {
-      const participantId = parseInt(req.query.participantId as string);
-      const quizId = parseInt(req.query.quizId as string);
+      const participantId = parseId(req.query.participantId as string);
+      const quizId = parseId(req.query.quizId as string);
 
       if (isNaN(participantId) || isNaN(quizId)) {
         return res
@@ -334,21 +356,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const results = await storage.getResultsByParticipantId(participantId);
-
-      // Check if the participant has taken the quiz and cannot retake it
-      // A participant can retake if:
-      // 1. They never took the quiz before, OR
-      // 2. They took it before but the result has canRetake set to true
-      const quizResults = results.filter((result) => result.quizId === quizId);
+      const quizResults = results.filter((r) => r.quizId === quizId);
 
       if (quizResults.length === 0) {
-        // Never taken before
-        res.json({ hasTakenQuiz: false, canRetake: true });
-      } else {
-        // Check if any of the results have canRetake set to true
-        const canRetake = quizResults.some((result) => result.canRetake);
-        res.json({ hasTakenQuiz: true, canRetake });
+        return res.json({ hasTakenQuiz: false, canRetake: true });
       }
+      const canRetake = quizResults.some((r) => r.canRetake);
+      res.json({ hasTakenQuiz: true, canRetake });
     } catch (error) {
       res.status(500).json({ message: "Failed to check quiz attempt" });
     }
@@ -356,13 +370,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/results/:id", async (req, res) => {
     try {
-      const resultId = parseInt(req.params.id);
+      const resultId = parseId(req.params.id);
+      if (isNaN(resultId))
+        return res.status(400).json({ message: "Invalid result ID" });
+
       const result = await storage.getResultWithDetails(resultId);
-
-      if (!result) {
-        return res.status(404).json({ message: "Result not found" });
-      }
-
+      if (!result) return res.status(404).json({ message: "Result not found" });
       res.json(result);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch result" });
@@ -371,7 +384,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/participants/:participantId/results", async (req, res) => {
     try {
-      const participantId = parseInt(req.params.participantId);
+      const participantId = parseId(req.params.participantId);
+      if (isNaN(participantId))
+        return res.status(400).json({ message: "Invalid participant ID" });
+
       const results = await storage.getResultsByParticipantId(participantId);
       res.json(results);
     } catch (error) {
@@ -379,12 +395,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Enable/disable retake for a quiz result
+  // Enable/disable retake for a quiz result (admin only)
   app.put("/api/results/:id/retake", isAdmin, async (req, res) => {
     try {
-      const resultId = parseInt(req.params.id);
-      const { canRetake } = req.body;
+      const resultId = parseId(req.params.id);
+      if (isNaN(resultId))
+        return res.status(400).json({ message: "Invalid result ID" });
 
+      const { canRetake } = req.body;
       if (typeof canRetake !== "boolean") {
         return res
           .status(400)
@@ -395,11 +413,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resultId,
         canRetake,
       );
-
-      if (!updatedResult) {
+      if (!updatedResult)
         return res.status(404).json({ message: "Result not found" });
-      }
-
       res.json(updatedResult);
     } catch (error) {
       res.status(500).json({ message: "Failed to update retake status" });

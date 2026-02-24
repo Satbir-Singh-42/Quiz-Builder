@@ -23,11 +23,14 @@ export default function QuizResults({ result }: QuizResultsProps) {
 
   // Map answers to questions
   const answersMap = result.answers.reduce(
-    (acc: Record<number, number>, curr: any) => {
+    (
+      acc: Record<number, number>,
+      curr: { questionId: number; selectedAnswer: number },
+    ) => {
       acc[curr.questionId] = curr.selectedAnswer;
       return acc;
     },
-    {},
+    {} as Record<number, number>,
   );
 
   // Get performance-based classes
@@ -86,7 +89,7 @@ export default function QuizResults({ result }: QuizResultsProps) {
 
           <div className="space-y-6">
             {result.questions &&
-              result.questions.map((question: any, index: number) => {
+              result.questions.map((question, index) => {
                 const selectedAnswer = answersMap[question.id];
                 const isCorrect = selectedAnswer === question.correctAnswer;
 
@@ -112,46 +115,43 @@ export default function QuizResults({ result }: QuizResultsProps) {
                         </h3>
 
                         <div className="mt-3 space-y-2">
-                          {question.options.map(
-                            (option: string, optIndex: number) => {
-                              // Determine the styling for each option
-                              let bgColor = "bg-gray-50 border border-gray-200";
-                              let statusElement = null;
+                          {question.options.map((option, optIndex) => {
+                            // Determine the styling for each option
+                            let bgColor = "bg-gray-50 border border-gray-200";
+                            let statusElement = null;
 
-                              // Only highlight user's answer
-                              if (optIndex === selectedAnswer) {
-                                if (isCorrect) {
-                                  // User selected the correct answer
-                                  bgColor =
-                                    "bg-green-50 border border-green-200";
-                                  statusElement = (
-                                    <div className="flex items-center text-sm font-medium text-green-600 mt-1">
-                                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                                      Correct
-                                    </div>
-                                  );
-                                } else {
-                                  // User selected the wrong answer
-                                  bgColor = "bg-red-50 border border-red-200";
-                                  statusElement = (
-                                    <div className="flex items-center text-sm font-medium text-red-600 mt-1">
-                                      <XCircle className="h-3.5 w-3.5 mr-1" />
-                                      Incorrect
-                                    </div>
-                                  );
-                                }
+                            // Only highlight user's answer
+                            if (optIndex === selectedAnswer) {
+                              if (isCorrect) {
+                                // User selected the correct answer
+                                bgColor = "bg-green-50 border border-green-200";
+                                statusElement = (
+                                  <div className="flex items-center text-sm font-medium text-green-600 mt-1">
+                                    <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                    Correct
+                                  </div>
+                                );
+                              } else {
+                                // User selected the wrong answer
+                                bgColor = "bg-red-50 border border-red-200";
+                                statusElement = (
+                                  <div className="flex items-center text-sm font-medium text-red-600 mt-1">
+                                    <XCircle className="h-3.5 w-3.5 mr-1" />
+                                    Incorrect
+                                  </div>
+                                );
                               }
+                            }
 
-                              return (
-                                <div
-                                  key={optIndex}
-                                  className={`p-3 rounded-md ${bgColor}`}>
-                                  {option}
-                                  {statusElement}
-                                </div>
-                              );
-                            },
-                          )}
+                            return (
+                              <div
+                                key={optIndex}
+                                className={`p-3 rounded-md ${bgColor}`}>
+                                {option}
+                                {statusElement}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>

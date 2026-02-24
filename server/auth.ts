@@ -93,12 +93,9 @@ export function setupAuth(app: Express) {
 
         const existingUser = await storage.getUserByUsername(username);
         if (existingUser) {
-          return res
-            .status(400)
-            .json({
-              message:
-                "Username already exists. Please choose another username.",
-            });
+          return res.status(400).json({
+            message: "Username already exists. Please choose another username.",
+          });
         }
 
         // Validate admin secret — only users who provide the correct secret can register
@@ -132,7 +129,7 @@ export function setupAuth(app: Express) {
   app.post("/api/login", (req: Request, res: Response, next: NextFunction) => {
     passport.authenticate(
       "local",
-      (err: any, user: Express.User | false, info: any) => {
+      (err: Error | null, user: Express.User | false) => {
         if (err) return next(err);
         if (!user)
           return res.status(401).json({ message: "Invalid credentials" });

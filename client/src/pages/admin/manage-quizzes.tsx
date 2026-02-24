@@ -73,13 +73,12 @@ export default function AdminManageQuizzes() {
       });
       setDeleteDialogOpen(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to delete quiz. Please try again.",
         variant: "destructive",
       });
-      console.error(error);
     },
   });
 
@@ -106,7 +105,7 @@ export default function AdminManageQuizzes() {
 
   return (
     <SidebarLayout>
-      <header className="mb-8 flex justify-between items-center">
+      <header className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Manage Quizzes</h1>
           <p className="text-gray-600">View, edit, and delete your quizzes</p>

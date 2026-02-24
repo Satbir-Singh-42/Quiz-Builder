@@ -55,8 +55,7 @@ export default function HomePage() {
             }
           }
         }
-      } catch (error) {
-        console.error("Error loading participant data:", error);
+      } catch {
         localStorage.removeItem("participantId");
         localStorage.removeItem("participantRollNumber");
       } finally {

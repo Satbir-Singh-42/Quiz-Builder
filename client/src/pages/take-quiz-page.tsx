@@ -51,8 +51,7 @@ export default function TakeQuizPage() {
         }
 
         setIsCheckingPreviousAttempt(false);
-      } catch (error) {
-        console.error("Error checking previous attempts:", error);
+      } catch {
         setIsCheckingPreviousAttempt(false);
       }
     };
