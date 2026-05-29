@@ -110,6 +110,12 @@ export default function AuthPage() {
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-primary">Admin Login</h1>
           <p className="text-gray-600 mt-1">Access the {APP_NAME} dashboard</p>
+          <div className="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded-md border border-blue-200 text-left">
+            <strong>Testing Credentials:</strong><br />
+            Username: admin<br />
+            Password: admin123<br />
+            Admin Secret: Welcome@123
+          </div>
         </div>
 
         <Tabs defaultValue="login" className="w-full">
