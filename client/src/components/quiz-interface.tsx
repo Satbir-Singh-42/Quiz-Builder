@@ -106,7 +106,7 @@ export default function QuizInterface({
     return () => {
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
       if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
       }
     };
   }, [quizStarted, submitting]);
@@ -202,7 +202,7 @@ export default function QuizInterface({
 
       // Exit fullscreen before navigating
       if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
       }
 
       toast({
@@ -487,12 +487,11 @@ export default function QuizInterface({
                           (option, index) => (
                             <div
                               key={index}
-                              className={`quiz-option group border-2 rounded-lg py-4 px-4 sm:px-6 transition-all cursor-pointer ${
-                                answers[questions[currentQuestionIndex].id] ===
-                                index
+                              className={`quiz-option group border-2 rounded-lg py-4 px-4 sm:px-6 transition-all cursor-pointer ${answers[questions[currentQuestionIndex].id] ===
+                                  index
                                   ? "border-primary bg-primary/5"
                                   : "border-gray-200 hover:bg-slate-50 hover:border-primary"
-                              }`}
+                                }`}
                               onClick={() =>
                                 handleAnswerSelect(
                                   questions[currentQuestionIndex].id,
@@ -506,7 +505,7 @@ export default function QuizInterface({
                                   id={`single-q${questions[currentQuestionIndex].id}-option-${index}`}
                                   checked={
                                     answers[
-                                      questions[currentQuestionIndex].id
+                                    questions[currentQuestionIndex].id
                                     ] === index
                                   }
                                   className="mt-1 sm:mt-0 pointer-events-none"
@@ -577,11 +576,10 @@ export default function QuizInterface({
                         {question.options.map((option, optionIndex) => (
                           <div
                             key={optionIndex}
-                            className={`quiz-option group border-2 rounded-lg py-3 px-4 sm:px-6 transition-all cursor-pointer ${
-                              answers[question.id] === optionIndex
+                            className={`quiz-option group border-2 rounded-lg py-3 px-4 sm:px-6 transition-all cursor-pointer ${answers[question.id] === optionIndex
                                 ? "border-primary bg-primary/5"
                                 : "border-gray-200 hover:bg-slate-50 hover:border-primary"
-                            }`}
+                              }`}
                             onClick={() =>
                               handleAnswerSelect(question.id, optionIndex)
                             }>

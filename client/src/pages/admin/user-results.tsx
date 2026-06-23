@@ -154,7 +154,7 @@ export default function AdminUserResults() {
     // Summary footer
     const avgScore = Math.round(
       results.reduce((acc, r) => acc + (r.score / r.totalQuestions) * 100, 0) /
-        results.length,
+      results.length,
     );
     const passCount = results.filter((r) => {
       const pct = (r.score / r.totalQuestions) * 100;
@@ -592,11 +592,10 @@ export default function AdminUserResults() {
                               </div>
                               <Badge
                                 variant={isPassed ? "success" : "destructive"}
-                                className={`text-xs ${
-                                  isPassed
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}>
+                                className={`text-xs ${isPassed
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                                  }`}>
                                 {isPassed ? "Pass" : "Fail"}
                               </Badge>
                             </div>
@@ -770,7 +769,7 @@ export default function AdminUserResults() {
                                   QUIZ_DEFAULTS.DEFAULT_PASSING_SCORE),
                             ).length /
                               filteredResults.length) *
-                              100,
+                            100,
                           )}
                           %
                         </p>

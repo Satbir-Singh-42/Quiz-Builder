@@ -315,11 +315,10 @@ export default function AdminManageQuizzes() {
                           </span>
                           <Badge
                             variant={quiz.isActive ? "default" : "outline"}
-                            className={`text-xs ${
-                              quiz.isActive
-                                ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                            }`}>
+                            className={`text-xs ${quiz.isActive
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                              }`}>
                             {quiz.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </div>

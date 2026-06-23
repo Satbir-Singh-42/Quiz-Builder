@@ -85,11 +85,10 @@ export default function QuizResults({ result }: QuizResultsProps) {
             </div>
             <Badge
               variant={isPassed ? "success" : "destructive"}
-              className={`text-sm px-3 py-1 ${
-                isPassed
-                  ? "bg-green-100 text-green-800 hover:bg-green-100"
-                  : "bg-red-100 text-red-800 hover:bg-red-100"
-              }`}>
+              className={`text-sm px-3 py-1 ${isPassed
+                ? "bg-green-100 text-green-800 hover:bg-green-100"
+                : "bg-red-100 text-red-800 hover:bg-red-100"
+                }`}>
               {isPassed ? (
                 <div className="flex items-center">
                   <Award className="h-4 w-4 mr-1" />
@@ -114,7 +113,7 @@ export default function QuizResults({ result }: QuizResultsProps) {
               result.questions.map((question, index) => {
                 const exactMatch = answersMap[question.id.toString()];
                 const selectedAnswer = exactMatch !== undefined ? exactMatch : answersMap[`fallback_${index}`];
-                
+
                 // correctAnswer === -1 means hidden (student view)
                 const answersHidden = question.correctAnswer === -1;
                 const isCorrect =

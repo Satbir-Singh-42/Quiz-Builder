@@ -156,7 +156,7 @@ export default function AdminDashboard() {
                     (() => {
                       const avgTime = Math.round(
                         results.reduce((acc, r) => acc + r.timeTaken, 0) /
-                          results.length,
+                        results.length,
                       );
                       return `${Math.floor(avgTime / 60)}m ${avgTime % 60}s`;
                     })()

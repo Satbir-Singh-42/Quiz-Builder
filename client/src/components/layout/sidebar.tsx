@@ -155,7 +155,7 @@ export default function Sidebar({
                       ? "justify-center px-2"
                       : "justify-start",
                     location === item.path &&
-                      "bg-blue-50 text-primary font-medium",
+                    "bg-blue-50 text-primary font-medium",
                   )}
                   onClick={() => handleNavigate(item.path)}
                   title={isCollapsed && !isMobile ? item.title : undefined}>

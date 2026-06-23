@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.isAuthenticated() &&
         req.user?.isAdmin;
       let quizzes = await getCachedQuizzes(!!includeInactive);
-      
+
       // If a participant ID is provided (from student dashboard), 
       // fetch inactive quizzes they have already completed so they can view results.
       if (!includeInactive) {
@@ -130,7 +130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!isNaN(participantId)) {
           const completedResults = await storage.getResultsByParticipantId(participantId);
           const completedQuizIds = new Set(completedResults.map(r => r.quizId));
-          
+
           if (completedQuizIds.size > 0) {
             const allQuizzes = await getCachedQuizzes(true);
             const inactiveCompleted = allQuizzes.filter((q: any) => !q.isActive && completedQuizIds.has(q.id));
@@ -138,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       res.json(quizzes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch quizzes" });

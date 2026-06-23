@@ -13,7 +13,7 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || AUTH.ADMIN_SECRET_FALLBACK;
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends SelectUser { }
   }
 }
 

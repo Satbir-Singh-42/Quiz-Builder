@@ -431,53 +431,53 @@ export default function AdminCreateQuiz() {
                                       {form.watch(
                                         `questions.${questionIndex}.options`,
                                       ).length > 2 && (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="ml-2 text-red-500"
-                                          onClick={() => {
-                                            const currentOptions =
-                                              form.getValues(
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="ml-2 text-red-500"
+                                            onClick={() => {
+                                              const currentOptions =
+                                                form.getValues(
+                                                  `questions.${questionIndex}.options`,
+                                                );
+                                              const currentCorrectAnswer =
+                                                form.getValues(
+                                                  `questions.${questionIndex}.correctAnswer`,
+                                                );
+
+                                              // Remove the option
+                                              const newOptions = [
+                                                ...currentOptions,
+                                              ];
+                                              newOptions.splice(optionIndex, 1);
+
+                                              // Update correct answer if needed
+                                              let newCorrectAnswer =
+                                                currentCorrectAnswer;
+                                              if (
+                                                optionIndex ===
+                                                currentCorrectAnswer
+                                              ) {
+                                                newCorrectAnswer = 0;
+                                              } else if (
+                                                optionIndex < currentCorrectAnswer
+                                              ) {
+                                                newCorrectAnswer--;
+                                              }
+
+                                              form.setValue(
                                                 `questions.${questionIndex}.options`,
+                                                newOptions,
                                               );
-                                            const currentCorrectAnswer =
-                                              form.getValues(
+                                              form.setValue(
                                                 `questions.${questionIndex}.correctAnswer`,
+                                                newCorrectAnswer,
                                               );
-
-                                            // Remove the option
-                                            const newOptions = [
-                                              ...currentOptions,
-                                            ];
-                                            newOptions.splice(optionIndex, 1);
-
-                                            // Update correct answer if needed
-                                            let newCorrectAnswer =
-                                              currentCorrectAnswer;
-                                            if (
-                                              optionIndex ===
-                                              currentCorrectAnswer
-                                            ) {
-                                              newCorrectAnswer = 0;
-                                            } else if (
-                                              optionIndex < currentCorrectAnswer
-                                            ) {
-                                              newCorrectAnswer--;
-                                            }
-
-                                            form.setValue(
-                                              `questions.${questionIndex}.options`,
-                                              newOptions,
-                                            );
-                                            form.setValue(
-                                              `questions.${questionIndex}.correctAnswer`,
-                                              newCorrectAnswer,
-                                            );
-                                          }}>
-                                          <Trash className="h-4 w-4" />
-                                        </Button>
-                                      )}
+                                            }}>
+                                            <Trash className="h-4 w-4" />
+                                          </Button>
+                                        )}
                                     </div>
                                   ))}
                               </RadioGroup>
