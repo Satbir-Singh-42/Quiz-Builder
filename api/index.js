@@ -110,11 +110,6 @@ var SIDEBAR_MENU = [
   },
   { title: "User Results", iconName: "Users", path: ROUTES.ADMIN_USER_RESULTS }
 ];
-var QUERY_CONFIG = {
-  STALE_TIME_MS: 5 * 60 * 1e3,
-  // 5 minutes
-  RETRY: false
-};
 var VALIDATION = {
   MIN_NAME_LENGTH: 2,
   MIN_QUESTION_LENGTH: 3,
@@ -565,6 +560,27 @@ function setupAuth(app2) {
 
 // server/routes.ts
 import { z as z2 } from "zod";
+var activeQuizzesCache = null;
+var allQuizzesCache = null;
+var CACHE_TTL = 60 * 1e3;
+async function getCachedQuizzes(includeInactive) {
+  const now = Date.now();
+  if (includeInactive) {
+    if (allQuizzesCache && now - allQuizzesCache.timestamp < CACHE_TTL) {
+      return allQuizzesCache.data;
+    }
+    const data = await storage.getAllQuizzes(true);
+    allQuizzesCache = { data, timestamp: now };
+    return data;
+  } else {
+    if (activeQuizzesCache && now - activeQuizzesCache.timestamp < CACHE_TTL) {
+      return activeQuizzesCache.data;
+    }
+    const data = await storage.getAllQuizzes(false);
+    activeQuizzesCache = { data, timestamp: now };
+    return data;
+  }
+}
 function isAdmin(req, res, next) {
   if (req.isAuthenticated() && req.user?.isAdmin) {
     return next();
@@ -627,7 +643,19 @@ async function registerRoutes(app2) {
   app2.get("/api/quizzes", async (req, res) => {
     try {
       const includeInactive = req.query.includeInactive === "true" && req.isAuthenticated() && req.user?.isAdmin;
-      const quizzes2 = await storage.getAllQuizzes(!!includeInactive);
+      let quizzes2 = await getCachedQuizzes(!!includeInactive);
+      if (!includeInactive) {
+        const participantId = parseId(req.query.participantId);
+        if (!isNaN(participantId)) {
+          const completedResults = await storage.getResultsByParticipantId(participantId);
+          const completedQuizIds = new Set(completedResults.map((r) => r.quizId));
+          if (completedQuizIds.size > 0) {
+            const allQuizzes = await getCachedQuizzes(true);
+            const inactiveCompleted = allQuizzes.filter((q) => !q.isActive && completedQuizIds.has(q.id));
+            quizzes2 = [...quizzes2, ...inactiveCompleted];
+          }
+        }
+      }
       res.json(quizzes2);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch quizzes" });
@@ -653,6 +681,8 @@ async function registerRoutes(app2) {
         creatorId: req.user.id
       });
       const quiz = await storage.createQuiz(validatedData);
+      activeQuizzesCache = null;
+      allQuizzesCache = null;
       res.status(201).json(quiz);
     } catch (error) {
       if (error instanceof z2.ZodError)
@@ -669,6 +699,8 @@ async function registerRoutes(app2) {
       if (!quiz) return res.status(404).json({ message: "Quiz not found" });
       const validatedData = insertQuizSchema.partial().parse(req.body);
       const updatedQuiz = await storage.updateQuiz(quizId, validatedData);
+      activeQuizzesCache = null;
+      allQuizzesCache = null;
       res.json(updatedQuiz);
     } catch (error) {
       if (error instanceof z2.ZodError)
@@ -683,6 +715,8 @@ async function registerRoutes(app2) {
         return res.status(400).json({ message: "Invalid quiz ID" });
       const success = await storage.deleteQuiz(quizId);
       if (!success) return res.status(404).json({ message: "Quiz not found" });
+      activeQuizzesCache = null;
+      allQuizzesCache = null;
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete quiz" });
@@ -862,7 +896,7 @@ async function registerRoutes(app2) {
           return res.status(403).json({ message: "Forbidden: you can only view your own results" });
         }
       }
-      if (!isAdminUser && result.questions) {
+      if (!isAdminUser && result.questions && result.quiz.isActive) {
         result.questions = result.questions.map((q) => ({
           ...q,
           correctAnswer: -1

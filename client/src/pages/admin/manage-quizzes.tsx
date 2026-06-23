@@ -41,7 +41,15 @@ import {
   Search,
   Play,
   Pause,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { QuizWithQuestions } from "@shared/schema";
 import { ROUTES, DASHBOARD } from "@shared/constants";
 
@@ -241,50 +249,49 @@ export default function AdminManageQuizzes() {
                         </TableCell>
                         <TableCell>{formatDate(quiz.createdAt)}</TableCell>
                         <TableCell>
-                          <div className="flex space-x-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`${quiz.isActive ? "text-orange-500" : "text-green-600"} h-8 w-8 p-0`}
-                              onClick={() => toggleActiveMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
-                              disabled={toggleActiveMutation.isPending}
-                              title={quiz.isActive ? "Stop Access (Hide)" : "Start Access (Show)"}>
-                              {quiz.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-primary h-8 w-8 p-0"
-                              onClick={() =>
-                                navigate(
-                                  `${ROUTES.ADMIN_CREATE_QUIZ}?edit=${quiz.id}`,
-                                )
-                              }
-                              title="Edit Quiz">
-                              <PenSquare className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-gray-500 h-8 w-8 p-0"
-                              onClick={() =>
-                                window.open(`/take-quiz/${quiz.id}`, "_blank")
-                              }
-                              title="Preview Quiz">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 h-8 w-8 p-0"
-                              onClick={() => {
-                                setQuizToDelete(quiz.id);
-                                setDeleteDialogOpen(true);
-                              }}
-                              title="Delete Quiz">
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => toggleActiveMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
+                                disabled={toggleActiveMutation.isPending}
+                                className={quiz.isActive ? "text-orange-500" : "text-green-600"}
+                              >
+                                {quiz.isActive ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                                {quiz.isActive ? "Stop Access (Hide)" : "Start Access (Show)"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => navigate(`${ROUTES.ADMIN_CREATE_QUIZ}?edit=${quiz.id}`)}
+                                className="text-primary"
+                              >
+                                <PenSquare className="h-4 w-4 mr-2" />
+                                Edit Quiz
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => window.open(`/take-quiz/${quiz.id}`, "_blank")}
+                                className="text-gray-500"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview Quiz
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setQuizToDelete(quiz.id);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                className="text-red-500"
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Delete Quiz
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -327,46 +334,50 @@ export default function AdminManageQuizzes() {
                           {formatDate(quiz.createdAt)}
                         </p>
                       </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`${quiz.isActive ? "text-orange-500" : "text-green-600"} h-8 w-8 p-0`}
-                          onClick={() => toggleActiveMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
-                          disabled={toggleActiveMutation.isPending}
-                          title={quiz.isActive ? "Stop Access" : "Start Access"}>
-                          {quiz.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary h-8 w-8 p-0"
-                          onClick={() =>
-                            navigate(
-                              `${ROUTES.ADMIN_CREATE_QUIZ}?edit=${quiz.id}`,
-                            )
-                          }>
-                          <PenSquare className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-gray-500 h-8 w-8 p-0"
-                          onClick={() =>
-                            window.open(`/take-quiz/${quiz.id}`, "_blank")
-                          }>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 h-8 w-8 p-0"
-                          onClick={() => {
-                            setQuizToDelete(quiz.id);
-                            setDeleteDialogOpen(true);
-                          }}>
-                          <Trash className="h-4 w-4" />
-                        </Button>
+                      <div className="flex shrink-0">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => toggleActiveMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
+                                disabled={toggleActiveMutation.isPending}
+                                className={quiz.isActive ? "text-orange-500" : "text-green-600"}
+                              >
+                                {quiz.isActive ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                                {quiz.isActive ? "Stop Access" : "Start Access"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => navigate(`${ROUTES.ADMIN_CREATE_QUIZ}?edit=${quiz.id}`)}
+                                className="text-primary"
+                              >
+                                <PenSquare className="h-4 w-4 mr-2" />
+                                Edit Quiz
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => window.open(`/take-quiz/${quiz.id}`, "_blank")}
+                                className="text-gray-500"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setQuizToDelete(quiz.id);
+                                  setDeleteDialogOpen(true);
+                                }}
+                                className="text-red-500"
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                       </div>
                     </div>
                   </div>
