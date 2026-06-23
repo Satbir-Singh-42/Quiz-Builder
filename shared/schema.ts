@@ -21,6 +21,13 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Session table for connect-pg-simple
+export const sessionTable = pgTable("session", {
+  sid: text("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users)
   .pick({
     username: true,
