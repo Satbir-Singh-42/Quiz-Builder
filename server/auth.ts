@@ -74,10 +74,19 @@ export function setupAuth(app: Express) {
     }),
   );
 
+  const userCache = new Map<number, { data: any, timestamp: number }>();
+
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
     try {
+      const now = Date.now();
+      const cached = userCache.get(id);
+      if (cached && now - cached.timestamp < 60000) {
+        return done(null, cached.data);
+      }
+      
       const user = await storage.getUser(id);
+      userCache.set(id, { data: user, timestamp: now });
       done(null, user);
     } catch (error) {
       done(error);

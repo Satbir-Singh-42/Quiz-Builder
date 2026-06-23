@@ -132,8 +132,10 @@ export default function AdminDashboard() {
                 <p className="text-xl sm:text-2xl font-semibold mt-1">
                   {isLoadingResults ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
+                  ) : results?.length ? (
                     `${calculateAverageScore()}%`
+                  ) : (
+                    "0%"
                   )}
                 </p>
               </div>
@@ -150,9 +152,9 @@ export default function AdminDashboard() {
               <div className="min-w-0">
                 <h3 className="text-gray-500 text-xs sm:text-sm">Avg. Time</h3>
                 <p className="text-xl sm:text-2xl font-semibold mt-1">
-                  {isLoadingResults || !results?.length ? (
+                  {isLoadingResults ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
+                  ) : results?.length ? (
                     (() => {
                       const avgTime = Math.round(
                         results.reduce((acc, r) => acc + r.timeTaken, 0) /
@@ -160,6 +162,8 @@ export default function AdminDashboard() {
                       );
                       return `${Math.floor(avgTime / 60)}m ${avgTime % 60}s`;
                     })()
+                  ) : (
+                    "0m 0s"
                   )}
                 </p>
               </div>
