@@ -14,7 +14,7 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const contentMargin = isMobile
-    ? "ml-0 pt-14"
+    ? "ml-0 mt-14"
     : isCollapsed
       ? "ml-16"
       : "ml-64";
@@ -45,7 +45,9 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
         />
 
         <main
-          className={`flex-1 min-w-0 p-4 sm:p-6 md:p-8 transition-all duration-300 ${contentMargin}`}>
+          className={`flex-1 min-w-0 px-4 pb-4 sm:px-6 sm:pb-6 md:px-8 md:pb-8 transition-all duration-300 ${
+            isMobile ? "pt-20 sm:pt-24 md:pt-24 ml-0" : "pt-4 sm:pt-6 md:pt-8 " + (isCollapsed ? "ml-16" : "ml-64")
+          }`}>
           {children}
         </main>
       </div>

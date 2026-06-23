@@ -95,7 +95,13 @@ export default function HomePage() {
 
   // For regular users, we only show active quizzes (don't pass includeInactive=true)
   const { data: quizzes, isLoading: isLoadingQuizzes } = useQuery<Quiz[]>({
-    queryKey: ["/api/quizzes"],
+    queryKey: participant ? [`/api/quizzes?participantId=${participant.id}`] : ["/api/quizzes"],
+    queryFn: async () => {
+      const url = participant ? `/api/quizzes?participantId=${participant.id}` : "/api/quizzes";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch quizzes");
+      return res.json();
+    },
     enabled: !!participant, // Only fetch quizzes after participant info is submitted
   });
 

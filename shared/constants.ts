@@ -183,7 +183,7 @@ export const LIVE_RESULTS = {
 
 // ── Query Client Config ───────────────────────────────────
 export const QUERY_CONFIG = {
-  STALE_TIME_MS: 5 * 60 * 1000, // 5 minutes
+  STALE_TIME_MS: 300000, // 5 minutes
   RETRY: false,
 } as const;
 

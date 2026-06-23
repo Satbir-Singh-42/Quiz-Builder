@@ -35,10 +35,14 @@ export default function QuizList({ quizzes, participantId }: QuizListProps) {
             {};
           results.forEach(
             (result: { quizId: number; id: number; canRetake?: boolean }) => {
-              completed[result.quizId] = {
-                id: result.id,
-                canRetake: result.canRetake || false,
-              };
+              // The API returns results ordered by submittedAt descending (newest first).
+              // Only save the first (newest) result we encounter for each quiz.
+              if (!completed[result.quizId]) {
+                completed[result.quizId] = {
+                  id: result.id,
+                  canRetake: result.canRetake || false,
+                };
+              }
             },
           );
 
@@ -102,6 +106,13 @@ export default function QuizList({ quizzes, participantId }: QuizListProps) {
                       <CheckCircle className="h-3 w-3 mr-1" /> Completed
                     </Badge>
                   )}
+                  {!quiz.isActive && (
+                    <Badge
+                      variant="outline"
+                      className="bg-red-50 text-red-700 border-red-200 hover:bg-red-50">
+                      Closed
+                    </Badge>
+                  )}
                   {canRetake && (
                     <Badge
                       variant="outline"
@@ -126,7 +137,7 @@ export default function QuizList({ quizzes, participantId }: QuizListProps) {
                   </Button>
                 )}
 
-                {(!isCompleted || canRetake) && (
+                {(!isCompleted || canRetake) && quiz.isActive && (
                   <Button
                     size="sm"
                     onClick={() => handleTakeQuiz(quiz.id)}

@@ -385,7 +385,7 @@ export default function AdminUserResults() {
                           <TableHead>Student</TableHead>
                           <TableHead>Quiz</TableHead>
                           <TableHead>
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-1">
                               Score
                               <Button
                                 variant="ghost"
@@ -403,7 +403,7 @@ export default function AdminUserResults() {
                             </div>
                           </TableHead>
                           <TableHead>
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-1">
                               Time
                               <Button
                                 variant="ghost"
@@ -419,7 +419,7 @@ export default function AdminUserResults() {
                             </div>
                           </TableHead>
                           <TableHead>
-                            <div className="flex items-center">
+                            <div className="flex items-center gap-1">
                               Date
                               <Button
                                 variant="ghost"
@@ -539,9 +539,9 @@ export default function AdminUserResults() {
                               </TableCell>
                               <TableCell>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
-                                  className="text-primary hover:text-primary/80"
+                                  className="h-8"
                                   onClick={() =>
                                     navigate(`/results/${result.id}`)
                                   }>
@@ -634,9 +634,9 @@ export default function AdminUserResults() {
                               </span>
                             </div>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="text-primary text-xs h-8"
+                              className="text-xs h-8"
                               onClick={() => navigate(`/results/${result.id}`)}>
                               View Details
                             </Button>
@@ -793,7 +793,7 @@ export default function AdminUserResults() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 flex items-center justify-center">
-                    <div className="grid grid-cols-4 h-full w-full max-w-3xl gap-2 items-end">
+                    <div className="grid grid-cols-4 h-full w-full max-w-3xl gap-2">
                       {SCORE_BANDS.map((band) => {
                         const count = filteredResults.filter((r) => {
                           const pct = (r.score / r.totalQuestions) * 100;
@@ -805,18 +805,22 @@ export default function AdminUserResults() {
                         return (
                           <div
                             key={band.range}
-                            className="flex flex-col items-center">
-                            <div
-                              className={`w-full ${band.color} rounded-t-md`}
-                              style={{
-                                height: `${Math.max(5, percent)}%`,
-                              }}></div>
-                            <p className="text-sm font-medium mt-2">
-                              {band.range}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {count} students
-                            </p>
+                            className="flex flex-col items-center h-full">
+                            <div className="w-full flex-1 flex items-end">
+                              <div
+                                className={`w-full ${band.color} rounded-t-md`}
+                                style={{
+                                  height: `${Math.max(5, percent)}%`,
+                                }}></div>
+                            </div>
+                            <div className="mt-2 text-center">
+                              <p className="text-sm font-medium">
+                                {band.range}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {count} {count === 1 ? "student" : "students"}
+                              </p>
+                            </div>
                           </div>
                         );
                       })}

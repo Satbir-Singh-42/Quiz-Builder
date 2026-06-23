@@ -41,16 +41,20 @@ export default function QuizResults({ result }: QuizResultsProps) {
     scorePercentage >=
     (result.quiz.passingScore || QUIZ_DEFAULTS.DEFAULT_PASSING_SCORE);
 
-  // Map answers to questions
+  // Map answers to questions. We also use a fallback index map because if the admin 
+  // edits a quiz, the old questions are deleted and new ones are created with new IDs, 
+  // which breaks the questionId mapping for past results!
   const answersMap = result.answers.reduce(
     (
-      acc: Record<number, number>,
+      acc: Record<string, number>,
       curr: { questionId: number; selectedAnswer: number },
+      index: number
     ) => {
-      acc[curr.questionId] = curr.selectedAnswer;
+      acc[curr.questionId.toString()] = curr.selectedAnswer;
+      acc[`fallback_${index}`] = curr.selectedAnswer;
       return acc;
     },
-    {} as Record<number, number>,
+    {} as Record<string, number>,
   );
 
   // Get performance-based classes
@@ -108,7 +112,9 @@ export default function QuizResults({ result }: QuizResultsProps) {
           <div className="space-y-6">
             {result.questions &&
               result.questions.map((question, index) => {
-                const selectedAnswer = answersMap[question.id];
+                const exactMatch = answersMap[question.id.toString()];
+                const selectedAnswer = exactMatch !== undefined ? exactMatch : answersMap[`fallback_${index}`];
+                
                 // correctAnswer === -1 means hidden (student view)
                 const answersHidden = question.correctAnswer === -1;
                 const isCorrect =
@@ -171,6 +177,15 @@ export default function QuizResults({ result }: QuizResultsProps) {
                                   </div>
                                 );
                               }
+                            } else if (!answersHidden && optIndex === question.correctAnswer) {
+                              // Highlight the correct answer if they missed it
+                              bgColor = "bg-green-50 border border-green-200";
+                              statusElement = (
+                                <div className="flex items-center text-sm font-medium text-green-600 mt-1">
+                                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                  Correct Answer
+                                </div>
+                              );
                             }
 
                             return (

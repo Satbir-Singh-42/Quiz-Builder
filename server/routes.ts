@@ -10,6 +10,29 @@ import {
   insertResultSchema,
 } from "@shared/schema";
 
+let activeQuizzesCache: { data: any, timestamp: number } | null = null;
+let allQuizzesCache: { data: any, timestamp: number } | null = null;
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
+async function getCachedQuizzes(includeInactive: boolean) {
+  const now = Date.now();
+  if (includeInactive) {
+    if (allQuizzesCache && now - allQuizzesCache.timestamp < CACHE_TTL) {
+      return allQuizzesCache.data;
+    }
+    const data = await storage.getAllQuizzes(true);
+    allQuizzesCache = { data, timestamp: now };
+    return data;
+  } else {
+    if (activeQuizzesCache && now - activeQuizzesCache.timestamp < CACHE_TTL) {
+      return activeQuizzesCache.data;
+    }
+    const data = await storage.getAllQuizzes(false);
+    activeQuizzesCache = { data, timestamp: now };
+    return data;
+  }
+}
+
 // RBAC Middleware
 function isAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.isAuthenticated() && req.user?.isAdmin) {
@@ -98,7 +121,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.query.includeInactive === "true" &&
         req.isAuthenticated() &&
         req.user?.isAdmin;
-      const quizzes = await storage.getAllQuizzes(!!includeInactive);
+      let quizzes = await getCachedQuizzes(!!includeInactive);
+      
+      // If a participant ID is provided (from student dashboard), 
+      // fetch inactive quizzes they have already completed so they can view results.
+      if (!includeInactive) {
+        const participantId = parseId(req.query.participantId as string);
+        if (!isNaN(participantId)) {
+          const completedResults = await storage.getResultsByParticipantId(participantId);
+          const completedQuizIds = new Set(completedResults.map(r => r.quizId));
+          
+          if (completedQuizIds.size > 0) {
+            const allQuizzes = await getCachedQuizzes(true);
+            const inactiveCompleted = allQuizzes.filter((q: any) => !q.isActive && completedQuizIds.has(q.id));
+            quizzes = [...quizzes, ...inactiveCompleted];
+          }
+        }
+      }
+      
       res.json(quizzes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch quizzes" });
@@ -131,6 +171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         creatorId: req.user!.id,
       });
       const quiz = await storage.createQuiz(validatedData);
+      activeQuizzesCache = null;
+      allQuizzesCache = null;
       res.status(201).json(quiz);
     } catch (error) {
       if (error instanceof z.ZodError)
@@ -150,6 +192,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertQuizSchema.partial().parse(req.body);
       const updatedQuiz = await storage.updateQuiz(quizId, validatedData);
+      activeQuizzesCache = null;
+      allQuizzesCache = null;
       res.json(updatedQuiz);
     } catch (error) {
       if (error instanceof z.ZodError)
@@ -166,6 +210,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const success = await storage.deleteQuiz(quizId);
       if (!success) return res.status(404).json({ message: "Quiz not found" });
+      activeQuizzesCache = null;
+      allQuizzesCache = null;
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete quiz" });
@@ -401,8 +447,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // For students, strip correct answers — only show marks, not solutions
-      if (!isAdminUser && result.questions) {
+      // For students, strip correct answers if the quiz is STILL ACTIVE to prevent cheating.
+      // Once the admin pauses (closes) the quiz, students can see the correct answers.
+      if (!isAdminUser && result.questions && result.quiz.isActive) {
         result.questions = result.questions.map((q) => ({
           ...q,
           correctAnswer: -1, // hide actual correct answer

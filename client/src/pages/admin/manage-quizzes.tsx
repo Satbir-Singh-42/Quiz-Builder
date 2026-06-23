@@ -39,6 +39,8 @@ import {
   Plus,
   Clock,
   Search,
+  Play,
+  Pause,
 } from "lucide-react";
 import { QuizWithQuestions } from "@shared/schema";
 import { ROUTES, DASHBOARD } from "@shared/constants";
@@ -78,6 +80,27 @@ export default function AdminManageQuizzes() {
       toast({
         title: "Error",
         description: "Failed to delete quiz. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Toggle active status mutation
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
+      await apiRequest("PUT", `/api/quizzes/${id}`, { isActive });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quizzes"] });
+      toast({
+        title: "Status Updated",
+        description: "Quiz access has been successfully updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update quiz status.",
         variant: "destructive",
       });
     },
@@ -222,6 +245,15 @@ export default function AdminManageQuizzes() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              className={`${quiz.isActive ? "text-orange-500" : "text-green-600"} h-8 w-8 p-0`}
+                              onClick={() => toggleActiveMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
+                              disabled={toggleActiveMutation.isPending}
+                              title={quiz.isActive ? "Stop Access (Hide)" : "Start Access (Show)"}>
+                              {quiz.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="text-primary h-8 w-8 p-0"
                               onClick={() =>
                                 navigate(
@@ -297,6 +329,15 @@ export default function AdminManageQuizzes() {
                         </p>
                       </div>
                       <div className="flex gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`${quiz.isActive ? "text-orange-500" : "text-green-600"} h-8 w-8 p-0`}
+                          onClick={() => toggleActiveMutation.mutate({ id: quiz.id, isActive: !quiz.isActive })}
+                          disabled={toggleActiveMutation.isPending}
+                          title={quiz.isActive ? "Stop Access" : "Start Access"}>
+                          {quiz.isActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
